@@ -10,6 +10,11 @@ linters:
     - ineffassign
     - gosec
     - misspell
+  exclusions:
+    rules:
+      # Tests read fixtures and docs by computed path.
+      - path: _test\.go
+        linters: [gosec]
 
 formatters:
   enable:

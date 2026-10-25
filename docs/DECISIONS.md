@@ -27,3 +27,14 @@ The installed app is **1.14.4**: the asar is `obsidian-1.14.4.asar`, and the ins
 
 - **Help pages:** pinned to `obsidianmd/obsidian-help@f333c95` and the JSON Canvas spec to `obsidianmd/jsoncanvas@456f843` (see `docs/obsidian/FETCHED.md`). The help pages are byte-identical to what obsidian.md/help serves today.
 - **Correction to CLAUDE.md:** 1.15.0 (2026-10-22) is an **Early access** release. The latest **public** release is **1.14.5**, published the same day. Its notes list no changes in our areas. Requirements are written against public behaviour. Anything that exists only in 1.15 EA is tagged as such in the spec.
+
+## D-005 Spec contract conventions (2026-10-25)
+
+- **IDs and phases:** IDs are `<GROUP>-<AREA>-<NN>`, and each carries a phase tag `pN`. `internal/speccov` enforces coverage for every ID with phase ≤ `docs/PHASE`. A test "names" an ID by containing it anywhere in a `_test.go` file. `testdata/` is excluded from that scan.
+- **New groups:** `M-*` (meta: spec integrity and source checksums) was added beyond the groups in CLAUDE.md. Search, daily notes, templates and attachments sit under `V-*`, because they live in `vault/` subpackages.
+- **Policy items:** `[policy]` marks our own choices where Obsidian defines nothing. These need owner review:
+  - V-WRITE-08: refuse new names with link-breaking characters
+  - V-SRCH-05: tag display casing
+  - O-MATH-01: math spans are opaque
+  - P-JSON-01: JSON frontmatter is read-only
+  - C-NODE-02: generated IDs are unique across nodes and edges
