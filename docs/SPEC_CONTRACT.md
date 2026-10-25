@@ -74,6 +74,9 @@ Each requirement is a single line:
 - **V-WRITE-08** `p1` A new file or folder name containing `# | ^ :`, `%%`, `[[` or `]]` is refused, because such names don't work as link targets. ⟨links.md §Invalid characters⟩ [policy]
 
 ### Trash and journal
+- **V-EDIT-01** `p2` The edit ops are `replace_section`, `insert_after_heading`, `append`, `prepend`, `replace_text` (with an expected count) and `replace_block`. Each is a byte-range patch, and every byte outside the edited range is unchanged. ⟨CLAUDE.md §2 Minimal patches⟩
+- **V-EDIT-02** `p2` A heading path or block ID that matches nothing, or more than one target, is refused with the candidates. A `replace_text` count mismatch is refused with the actual count. ⟨CLAUDE.md §2⟩
+- **V-EDIT-03** `p2` Inserted text takes the note's line endings, and `prepend` goes after the frontmatter. ⟨CLAUDE.md §2⟩
 - **V-TRASH-01** `p1` Delete moves the file to `<vault>/.trash/<same relative path>`. On a name collision a suffix is added. ⟨CLAUDE.md §2; settings.md §Deleted files⟩
 - **V-TRASH-02** `p1` Restore moves a trashed file back to its original path. It fails with a clear error if that path is now occupied. ⟨CLAUDE.md §2⟩
 - **V-TRASH-03** `p1` Trash entries can be listed with their original paths. ⟨CLAUDE.md §Tools⟩

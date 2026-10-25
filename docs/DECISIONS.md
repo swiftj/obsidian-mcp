@@ -171,3 +171,39 @@ The dependency is added in Phase 2, not before.
   - `webm` is classified as video; file-formats.md lists it under both audio and video.
 - **Hardening beyond the spec:** paths with control characters or invalid UTF-8 are refused, as are `.md` writes with invalid UTF-8.
 - **Plan deviation:** steps 2–4 of the Phase 1 plan were committed together, because their tests share fixtures and call across trash, write and journal.
+
+## D-009 Scanner, properties and edit choices (Phase 2, 2026-10-25)
+
+**Dependency:** `go.yaml.in/yaml/v3` v3.0.5, added for frontmatter (D-007). The binaries stay CGO-free, which `make verify-static` checks.
+
+**Scanner (`vault/ofm`)**
+- **Inline scanning is per line.** Inline code, math and Markdown links don't span lines. Wikilinks and inline `%%` comments can't in Obsidian either.
+- **Comments:** links inside `%%` comments are reported, with `InComment` (D-006). Tags in comments are **not** reported (assumed, not probed).
+- **Headings in quotes or lists** are blocks, but they aren't in `Doc.Headings` and don't start sections.
+- **Tag characters** follow the probe results:
+  - A tag ends at whitespace, at ASCII punctuation other than `-` `_` `/`, or at U+2000–206F and U+2E00–2E7F.
+  - A `#` right after a letter, a digit or `(` doesn't start a tag, unless it directly follows another tag (`#a#b`).
+- **Task items:** a task item's text is scanned after its checkbox, so `[` in `[[] …` is the box, not a link. The fuzzer found this case.
+- **Block IDs:** a lone `^id` line after a paragraph labels nothing. Obsidian's behaviour there wasn't probed. After a list, quote, callout or table, it labels that block (D-006).
+- **Other choices:** `webm` embeds and the size `|W` apply only to image extensions. Markdown destinations are percent-decoded, and invalid escapes are kept as written.
+
+**Properties (`vault/props`)**
+- **Patch range:** a key's lines run from its line to the next key's line, minus trailing blank lines and column-0 comments, which belong to the next key.
+- **Self-check:** every patch is re-read before it is returned. It is refused unless every other property keeps its exact bytes and value, and the target appears once. The fuzzer drove this design: it found bare CRs, `---` document markers inside frontmatter, indented root mappings and explicit `?` keys.
+- **Refused as unpatchable:** frontmatter with bare CRs, document markers, indented or flow-style root mappings, invalid YAML, and JSON (P-JSON-01).
+- **Property names:** at most 256 bytes of valid UTF-8, with no control characters, and not starting with `#`. Values must be valid UTF-8.
+- **Writing values:**
+  - Strings are plain when that reads back unchanged; otherwise yaml/v3 quotes them. Values containing `[[` or line breaks are always double-quoted.
+  - Lists keep an existing list's style (its block item prefix, or flow), and new lists use `  - `.
+  - A `Datetime` value without seconds gets `:00`.
+  - Overwriting a nested (map) value is refused. Other keys around it are fine.
+- **Tags:** frontmatter tags come only from the exact key `tags`, matching D-006, where the singular `tag` gave none. Property reads still treat `tag` as `tags` (P-KEY-02).
+
+**Edits (`Vault.Edit`)**
+- **Heading paths:** `A#B` means a heading `B` with `A` among its enclosing headings, in order. An exact match is tried first, then a unique case-insensitive one. Ambiguity is refused with the candidates and their lines.
+- **`replace_section`** replaces the whole section body, subsections included, and keeps the blank lines around it.
+- **`insert_after_heading`** inserts after the heading's leading blank lines.
+- **`replace_text`** matches only in the body, never the frontmatter. It needs at least one match, and the count must equal the expected count.
+- **`replace_block`** keeps the ` ^id` marker. Block IDs are compared case-insensitively.
+- **No line-ending normalisation:** edits and property writes don't normalise line endings, so mixed-ending files keep every byte outside the edit. `Replace`, which rewrites the whole file, still converts to the file's style (V-WRITE-05).
+- **Spec additions:** V-EDIT-01..03 were added for the library edit ops, which CLAUDE.md puts in Phase 2. The owner approved this with the Phase 2 plan.
