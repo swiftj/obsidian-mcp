@@ -1,0 +1,4 @@
+---
+tags: solo
+---
+body

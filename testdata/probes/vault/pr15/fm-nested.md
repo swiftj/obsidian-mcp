@@ -1,0 +1,5 @@
+---
+tags:
+  - parent/child
+---
+body

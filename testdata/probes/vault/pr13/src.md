@@ -1,0 +1,4 @@
+- [[Heads#Colon: here]]
+- [[Heads#Colon here]]
+- [[Heads#Simple#Colon: here]]
+- [[Heads#Setext One]]

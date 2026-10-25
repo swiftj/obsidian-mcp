@@ -1,0 +1,4 @@
+- [[Nick Name]]
+- [[Nick Name|shown]]
+- [[other alias]]
+- [[Clash]]

@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    {"id": "t1", "type": "text", "text": "Hello", "x": 0, "y": 0, "width": 250, "height": 60},
+    {"id": "f1", "type": "file", "file": "pr16/Note16.md", "x": 300, "y": 0, "width": 400, "height": 300, "x-extra": "keep me"},
+    {"id": "l1", "type": "link", "url": "https://example.com", "x": 0, "y": 400, "width": 400, "height": 300, "color": "4"},
+    {"id": "g1", "type": "group", "label": "Group", "x": -50, "y": -50, "width": 800, "height": 800}
+  ],
+  "edges": [
+    {"id": "e1", "fromNode": "t1", "toNode": "f1", "label": "to note"}
+  ],
+  "x-top": {"custom": true}
+}
