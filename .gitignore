@@ -1,0 +1,6 @@
+/dist/
+/.gocache/
+*.test
+*.out
+coverage.*
+.DS_Store
