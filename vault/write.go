@@ -110,6 +110,13 @@ func (v *Vault) Create(ctx context.Context, p string, data []byte, o WriteOption
 // the file's current etag (V-WRITE-01). data is converted to the file's line
 // endings and BOM (V-WRITE-05).
 func (v *Vault) Replace(ctx context.Context, p string, data []byte, etag string, o WriteOptions) (*Result, error) {
+	return v.replace(ctx, p, etag, o, func(cur []byte) ([]byte, error) { return MatchStyle(cur, data), nil })
+}
+
+// replace changes the existing file at p to change(current bytes), with
+// the etag check, journal, atomic write and dry run of Replace. change runs
+// under the write lock, on the bytes the etag was checked against.
+func (v *Vault) replace(ctx context.Context, p, etag string, o WriteOptions, change func(cur []byte) ([]byte, error)) (*Result, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -130,7 +137,10 @@ func (v *Vault) Replace(ctx context.Context, p string, data []byte, etag string,
 	if curTag != etag {
 		return nil, &ConflictError{Path: rel, Expected: etag, Current: curTag}
 	}
-	data = MatchStyle(cur, data)
+	data, err := change(cur)
+	if err != nil {
+		return nil, err
+	}
 	if err := checkText("replace", rel, data); err != nil {
 		return nil, err
 	}
