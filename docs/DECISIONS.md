@@ -130,3 +130,23 @@ Method: a made-up scratch vault (`testdata/probes/vault/`) opened in Obsidian 1.
 - **Renames (PR-01/04/13/14 rewrite side):** we rewrite every link the index resolves to the old path, in the configured format.
 - **Alias click (PR-03):** irrelevant, because aliases don't resolve.
 - **Canvas formatting (PR-16):** [policy] keep the file's existing indentation; new files use tabs.
+
+## D-007 YAML library: `go.yaml.in/yaml/v3` (2026-10-25)
+
+Spiked in a scratch module against `go.yaml.in/yaml/v3` v3.0.5 and `github.com/goccy/go-yaml` v1.19.2. Both build with `CGO_ENABLED=0`.
+
+| Check | yaml/v3 | goccy |
+|---|---|---|
+| Position per key and value | line and column (columns count runes) | byte offset, line and column (byte offsets correct with UTF-8 and CRLF) |
+| End position of a value | no | no |
+| Comments | head and line comments on nodes | attached to nodes with `ParseComments` |
+| `yes` | string (YAML 1.2) | string |
+| `1e3` | float (YAML 1.2 core, as JS parsers read it) | **string** |
+| `2024-01-15` | `!!timestamp` tag, raw text kept | string |
+
+**Choice: `go.yaml.in/yaml/v3`.**
+- **Edits don't need parser byte offsets.** Edits are line-span patches: a key's span runs from its line to the line before the next sibling key. Neither library gives end positions, so we compute spans from our own line table. Line and column are enough for that.
+- **Scalar typing matches YAML 1.2 core.** That is what Obsidian's JavaScript parser uses, and it matters for type inference and validation.
+- **It is the maintained continuation of `gopkg.in/yaml.v3`,** under the YAML organisation.
+
+The dependency is added in Phase 2, not before.
