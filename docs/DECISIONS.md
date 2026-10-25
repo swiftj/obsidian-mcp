@@ -22,3 +22,8 @@ The installed app is **1.14.4**: the asar is `obsidian-1.14.4.asar`, and the ins
 - Go 1.27.3. There are no dependencies yet.
 - The Makefile sets a private `GOCACHE` (`.gocache/`, which is gitignored).
 - golangci-lint 2.15 with a small linter set (`.golangci.yml`). misspell uses its default locale, because spec field names such as JSON Canvas `color` are US spellings.
+
+## D-004 Source pinning and release status (2026-10-25)
+
+- **Help pages:** pinned to `obsidianmd/obsidian-help@f333c95` and the JSON Canvas spec to `obsidianmd/jsoncanvas@456f843` (see `docs/obsidian/FETCHED.md`). The help pages are byte-identical to what obsidian.md/help serves today.
+- **Correction to CLAUDE.md:** 1.15.0 (2026-10-22) is an **Early access** release. The latest **public** release is **1.14.5**, published the same day. Its notes list no changes in our areas. Requirements are written against public behaviour. Anything that exists only in 1.15 EA is tagged as such in the spec.
