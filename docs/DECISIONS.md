@@ -150,3 +150,24 @@ Spiked in a scratch module against `go.yaml.in/yaml/v3` v3.0.5 and `github.com/g
 - **It is the maintained continuation of `gopkg.in/yaml.v3`,** under the YAML organisation.
 
 The dependency is added in Phase 2, not before.
+
+## D-008 Vault core choices (Phase 1, 2026-10-25)
+
+- **Trash naming [policy]:**
+  - Deleted files go to `.trash/<same path>`.
+  - On a collision the name becomes `<stem>~N<ext>`, with the lowest free N. `ListTrash` strips a trailing `~N` to recover the original path.
+  - A file whose real name ends in `~N` therefore restores to the stripped name by default. `Restore` takes an explicit destination for that case.
+  - Moves into and out of `.trash` link and then unlink, so they never overwrite an existing file.
+- **Creates never overwrite:** the content is written to a temp file and hard-linked into place. If the filesystem has no hard links, an exclusive create is used instead.
+- **Replace checks the etag twice:** once before writing, and again just before the rename. That narrows the window for an Obsidian save landing in between.
+- **Journal layout:**
+  - Entries live in `<journal>/<vault name>-<hash of the vault path>/<time>-<seq>/`, holding `meta.json` plus `data` (the previous bytes). Files are `0600`.
+  - Create and restore entries keep no data.
+  - Pruning removes the oldest entries across all vaults until the total is within the cap, always keeping the newest.
+  - If the journal is on and recording fails, the write is refused.
+- **Listing:**
+  - Names starting with `.`, symlinks, and hidden or denied paths are skipped without descending into them.
+  - Each folder's entries are sorted by name.
+  - `webm` is classified as video; file-formats.md lists it under both audio and video.
+- **Hardening beyond the spec:** paths with control characters or invalid UTF-8 are refused, as are `.md` writes with invalid UTF-8.
+- **Plan deviation:** steps 2–4 of the Phase 1 plan were committed together, because their tests share fixtures and call across trash, write and journal.
