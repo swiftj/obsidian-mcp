@@ -38,3 +38,95 @@ The installed app is **1.14.4**: the asar is `obsidian-1.14.4.asar`, and the ins
   - O-MATH-01: math spans are opaque
   - P-JSON-01: JSON frontmatter is read-only
   - C-NODE-02: generated IDs are unique across nodes and edges
+
+## D-006 Probe results, Obsidian 1.14.4 (2026-10-25)
+
+Method: a made-up scratch vault (`testdata/probes/vault/`) opened in Obsidian 1.14.4 on macOS. The evidence is what Obsidian wrote to disk, plus a dump of its own metadata cache, resolver and link generator (`scripts/probe-dump.js`). The owner stopped the manual probing after the settings step. Items that weren't probed are marked **assumed**: they follow the docs and existing servers, and use the conservative choice.
+
+**Vault files (probed)**
+- Opening a vault creates `.obsidian/` with `app.json` `{}`, `appearance.json` `{}`, `core-plugins.json` and `workspace.json`. JSON is 2-space indented, with no trailing newline.
+- `core-plugins.json` is an object mapping plugin id to bool. Daily notes, Templates, Bases, Canvas and Properties are on by default.
+- No lock file exists while the vault is open (V-LOCK-01).
+- `app.json` holds only keys changed from the default. The defaults are `newLinkFormat` `shortest`, `useMarkdownLinks` false, `alwaysUpdateLinks` false, `newFileLocation` `root`, `newFileFolderPath` `/`, `attachmentFolderPath` `/`, and no `userIgnoreFilters`.
+- Observed values: `"newFileLocation": "folder"` with `"newFileFolderPath": "pr06/excluded"`, and `"userIgnoreFilters": ["pr06/excluded/"]`. A folder picked in Manage is stored with a trailing `/`.
+- Excluded files are hidden from views, but their links stay in the link index.
+- `types.json` is `{"types": {name: type}}`, written the first time a type changes, and it also records `aliases`, `cssclasses` and `tags`. Types seen: `text`, `multitext`, `number`, `checkbox`, `date`, `datetime`. Changing a type rewrote no note.
+- The date-time picker wrote `p_picked: 1972-05-13T00:00:00`: unquoted, with seconds, and appended as the last key. All other bytes were unchanged.
+
+**Link resolution (probed)** (L-RES-01..05)
+- Case-insensitive.
+- `.md` is optional.
+- A path-bearing target matches by path suffix (`a/Tie` finds `pr01/a/Tie.md`).
+- Aliases do **not** resolve.
+- Same-named files resolve as follows:
+  - the file in the source's folder wins
+  - otherwise the shortest path wins
+  - between equal-length paths (`pr01/a/Tie`, `pr01/b/Tie`) Obsidian chose `b`, which is not alphabetical, so we report these as ambiguous
+- Markdown destinations are percent-decoded, and `./`, `../` and a leading `/` work. A destination with an unencoded space and no `<…>` is not a link.
+
+**Link generation (probed)** (L-REN-02)
+
+| Format | Link written |
+|---|---|
+| shortest | the bare name if it is unique in the vault, otherwise the full path |
+| relative | the path from the note's folder (`../a/Tie`) |
+| absolute | the full vault path |
+
+- `.md` is dropped, and other extensions are kept.
+- Markdown style is `[Name](dest.md#sub)` with only spaces encoded as `%20`.
+
+**Where links count (probed)** (O-CMT-01, O-HTML-01)
+- **Indexed:** normal text, `%%inline%%` and `%%` block comments, inline HTML, callouts, tables (`\|` alias), embeds, Markdown links, and quoted frontmatter values (including list items).
+- **Not indexed:** fenced, inline and indented code; math; HTML blocks; escaped `\[[`; unquoted `[[x]]` in frontmatter.
+- **Deviation from CLAUDE.md §3:** CLAUDE.md said to skip links in comments when renaming. Because Obsidian counts them as links, we index and rewrite them, so a rename never leaves a stale backlink.
+
+**Markdown structure (probed)** (O-FM-01, O-HEAD-01, O-TAG-*)
+
+*Frontmatter*
+- **Recognised:** an exact `---` opening and closing line, with LF or CRLF, a BOM (offsets exclude it), or a JSON body.
+- **Not recognised:** `--- `, a leading blank line, `----`, indented fences, a `...` close, or no close.
+- **Empty or invalid YAML:** the block is still frontmatter, with no properties.
+
+*Headings*
+- ATX headings with at most 3 spaces of indent, plus setext headings.
+- Closing `#`s are dropped.
+- `#NoSpace` is a tag, not a heading.
+- Heading text keeps `[[..|..]]`, `**`, `%%`, `#`, `|` and `^` as written.
+
+*Block IDs*
+- Recognised: ` ^id` at the end of a paragraph or list item, or alone on the line after a quote or table.
+- Not recognised: `^under_score`, `x^id` with no space, and IDs inside code.
+
+*Tags*
+- **Tags:** `#y1984`, `#émoji🙂`, `#日本語`, `#-lead`, `#_lead`, `#/slash` and `**#bold**`.
+- **Split or trimmed:** `#a#b` gives two tags, `#trail.` gives `trail`, and `#tag,comma` gives `tag`.
+- **Not tags:** `#123`, `word#x`, `(#paren)`, URL fragments, and code.
+- **Case and nesting:** case is merged, and parent tags are listed.
+- **Frontmatter `tags`:**
+  - a list (block or flow) gives one tag per item, with `#` stripped
+  - a one-word scalar gives one tag
+  - `one, two` and `two words` give none
+  - singular `tag:` gives none
+
+**Type inference with no `types.json` entry (probed)** (P-TYPE-06)
+
+| Value | Inferred |
+|---|---|
+| `7`, `3.14` | number |
+| `false` | checkbox |
+| `2024-02-29`, `"2024-01-15"` | date |
+| `2024-02-29T08:15` | datetime |
+| `2024-02-29T08:15:00` | **text** |
+| `"42"`, `"[[README]]"`, empty, `null` | text |
+| block or flow list | multitext |
+| nested map, unquoted `[[x]]` | unknown |
+
+**Assumed, not probed**
+- **Watcher (PR-08):** we write atomically (temp file and rename). Lost updates are prevented by etags, not by Obsidian's watcher.
+- **Daily notes and templates (PR-11):** both option files were `{}` at their defaults. We read the documented keys (`folder`, `format`, `template`; `folder`, `dateFormat`, `timeFormat`), ignore unknown keys, and use the documented defaults.
+- **Attachment location (PR-06):**
+  - `/` = vault root, `./` = same folder, `./<name>` = subfolder, anything else = that folder
+  - this is the encoding existing Obsidian tools use; only the default `/` was observed
+- **Renames (PR-01/04/13/14 rewrite side):** we rewrite every link the index resolves to the old path, in the configured format.
+- **Alias click (PR-03):** irrelevant, because aliases don't resolve.
+- **Canvas formatting (PR-16):** [policy] keep the file's existing indentation; new files use tabs.

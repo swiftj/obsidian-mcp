@@ -7,7 +7,7 @@ This file lists numbered, testable requirements. Every requirement has at least 
 Each requirement is a single line:
 
 ```
-- **ID** `pN` statement. ⟨source⟩ [probe PR-xx]
+- **ID** `pN` statement. ⟨source⟩ [probed D-006]
 ```
 
 | Part | Meaning |
@@ -15,7 +15,8 @@ Each requirement is a single line:
 | `ID` | `<GROUP>-<AREA>-<NN>` |
 | `pN` | the phase that must cover it |
 | `⟨source⟩` | a file in `docs/` with a section, or `CLAUDE.md §section` for our own design rules |
-| `[probe PR-xx]` | the statement depends on an observation recorded in DECISIONS. Until the probe is done, the statement is provisional. |
+| `[probed D-006]` | the statement rests on behaviour observed in Obsidian and recorded in DECISIONS. |
+| `[assumed D-006]` | Obsidian's behaviour was not probed; the statement follows the docs and existing servers, and can be revisited. |
 | `[policy]` | our own choice where Obsidian doesn't define the behaviour. The owner can override it. |
 
 **Groups:**
@@ -65,7 +66,7 @@ Each requirement is a single line:
 ### Writing
 - **V-WRITE-01** `p1` Changing an existing file requires its `etag`. A mismatch returns `ConflictError`, carrying the current etag and a re-read hint. ⟨CLAUDE.md §2⟩
 - **V-WRITE-02** `p1` Creating a file fails if it already exists (`If-None-Match: *` semantics). ⟨CLAUDE.md §2⟩
-- **V-WRITE-03** `p1` Replacement is atomic: write a temp file in the same directory, fsync it, rename it over the target, then fsync the directory. The file's mode is preserved. ⟨CLAUDE.md §2⟩ [probe PR-08]
+- **V-WRITE-03** `p1` Replacement is atomic: write a temp file in the same directory, fsync it, rename it over the target, then fsync the directory. The file's mode is preserved. Obsidian's reaction to the rename was not probed; etag checks make it irrelevant to correctness. ⟨CLAUDE.md §2⟩ [assumed D-006]
 - **V-WRITE-04** `p1` All writes in a process are serialised. ⟨CLAUDE.md §2⟩
 - **V-WRITE-05** `p1` Each file keeps its line endings (LF or CRLF) and any UTF-8 BOM through every edit. ⟨CLAUDE.md §2⟩
 - **V-WRITE-06** `p1` A `.md` write with invalid UTF-8 is refused. ⟨CLAUDE.md §2⟩
@@ -81,60 +82,60 @@ Each requirement is a single line:
 - **V-JRN-03** `p5` Undo restores the state from before the last journaled write. Its dry run shows the diff. Undo itself goes through the etag check. ⟨CLAUDE.md §Tools⟩
 
 ### Vault configuration
-- **V-CFG-01** `p1` These `app.json` keys are read: `newLinkFormat`, `useMarkdownLinks`, `alwaysUpdateLinks`, `newFileLocation`, `newFileFolderPath`, `attachmentFolderPath`, `userIgnoreFilters`. A missing key means Obsidian's default for that setting. ⟨settings.md §Files and links⟩ [probe PR-06]
-- **V-CFG-02** `p1` These files are read when present: `daily-notes.json` (folder, format, template), `templates.json` (folder, date and time formats) and `core-plugins.json`. ⟨daily-notes.md; templates.md⟩ [probe PR-11]
-- **V-CFG-03** `p1` A missing or empty `.obsidian/` folder is valid and gives all-default settings. ⟨CLAUDE.md §Facts⟩ [probe PR-06]
-- **V-LOCK-01** `p1` Obsidian's lock-file behaviour, if it has any, is honoured. ⟨CLAUDE.md §Known undocumented⟩ [probe PR-07]
+- **V-CFG-01** `p1` These `app.json` keys are read: `newLinkFormat`, `useMarkdownLinks`, `alwaysUpdateLinks`, `newFileLocation`, `newFileFolderPath`, `attachmentFolderPath`, `userIgnoreFilters`. Obsidian writes only keys changed from the default. Missing keys take the defaults observed in D-006: `shortest`, `false`, `false`, `root`, `/`, `/`, none. ⟨settings.md §Files and links⟩ [probed D-006]
+- **V-CFG-02** `p1` These files are read when present: `daily-notes.json` (folder, format, template), `templates.json` (folder, dateFormat, timeFormat) and `core-plugins.json` (an object mapping plugin id to bool). Unknown keys are ignored, and a missing file or key means the documented default. ⟨daily-notes.md; templates.md⟩ [assumed D-006]
+- **V-CFG-03** `p1` A missing `.obsidian/` folder, or an `app.json` of `{}`, is valid and gives all-default settings. ⟨CLAUDE.md §Facts⟩ [probed D-006]
+- **V-LOCK-01** `p1` Obsidian keeps no lock file in the vault while it is open, so none is checked or created. ⟨CLAUDE.md §Known undocumented⟩ [probed D-006]
 
 ### Search
 - **V-SRCH-01** `p3` Full-text BM25 search over `.md` files returns ranked paths with snippets and 1-based line numbers. It is paginated. ⟨CLAUDE.md §Tools⟩
 - **V-SRCH-02** `p3` Search filters: tag, property=value, path glob, and modified-since. Filters combine with AND. ⟨CLAUDE.md §Tools⟩
-- **V-SRCH-03** `p3` Paths matching `userIgnoreFilters` (Excluded files) are left out of search, tag listings, orphans and unresolved-link listings, but can still be read directly. ⟨settings.md §Excluded files⟩ [probe PR-06]
+- **V-SRCH-03** `p3` Paths matching `userIgnoreFilters` (Excluded files; a folder entry is stored with a trailing `/`) are left out of search, tag listings, orphans and unresolved-link listings. They stay in the link index, so their links still count as backlinks, and they can still be read directly. ⟨settings.md §Excluded files⟩ [probed D-006]
 - **V-SRCH-04** `p3` A tag filter ignores case and matches nested tags: `inbox` matches `inbox/to-read`. ⟨tags.md §Nested tags⟩
 - **V-SRCH-05** `p3` `list_tags` returns case-folded tags with counts and nesting. Each tag is displayed with the casing of its first occurrence in vault path order. ⟨tags.md §Tag format⟩ [policy]
 - **V-SRCH-06** `p3` The index builds lazily and updates incrementally by mtime. A 10k-note fixture vault indexes inside the call timeout. ⟨CLAUDE.md §3⟩
 
 ### Daily notes, templates and attachments
-- **V-DAILY-01** `p5` The daily-note path is `<folder>/<date formatted with format>.md`, with default format `YYYY-MM-DD`. A `/` produced by the format creates subfolders. Unsupported moment tokens are refused, not guessed. ⟨daily-notes.md⟩ [probe PR-11]
+- **V-DAILY-01** `p5` The daily-note path is `<folder>/<date formatted with format>.md`, with default format `YYYY-MM-DD`. A `/` produced by the format creates subfolders. Unsupported moment tokens are refused, not guessed. ⟨daily-notes.md⟩ [assumed D-006]
 - **V-DAILY-02** `p5` Opening a missing daily note creates it from the configured template, with variables expanded. It works for any date. ⟨daily-notes.md §Create a daily note from template⟩
-- **V-TPL-01** `p5` Template variables: `{{title}}`, `{{date}}` (default `YYYY-MM-DD`), `{{time}}` (default `HH:mm`), plus `{{date:FMT}}` and `{{time:FMT}}` with moment tokens. The defaults can be overridden in `templates.json`. ⟨templates.md §Template variables⟩ [probe PR-11]
+- **V-TPL-01** `p5` Template variables: `{{title}}`, `{{date}}` (default `YYYY-MM-DD`), `{{time}}` (default `HH:mm`), plus `{{date:FMT}}` and `{{time:FMT}}` with moment tokens. The defaults can be overridden in `templates.json`. Any other `{{…}}` and all `<% %>` text is copied verbatim. ⟨templates.md §Template variables⟩ [assumed D-006]
 - **V-TPL-02** `p5` Any other `{{…}}` text and all Templater `<% … %>` code are copied verbatim and never executed. ⟨CLAUDE.md §5⟩
-- **V-ATT-01** `p5` `attach_file` copies a local file into the folder chosen by `attachmentFolderPath` (vault root, a named folder, the same folder, or a subfolder of it). It returns embed text in the vault's link style. ⟨settings.md §Default location for new attachments⟩ [probe PR-06]
+- **V-ATT-01** `p5` `attach_file` copies a local file into the folder chosen by `attachmentFolderPath`: `/` or missing = vault root, `./` = same folder as the note, `./<name>` = subfolder `<name>` of the note's folder, anything else = that vault folder. It returns embed text in the vault's link style. ⟨settings.md §Default location for new attachments⟩ [assumed D-006]
 
 ## O: OFM scanner
 
 - **O-SPAN-01** `p2` The scanner returns typed byte spans for frontmatter, headings, sections, blocks, block IDs, links, embeds, tags, callouts, comments, code, math and tasks. Spans either nest or don't overlap. Fuzzing never panics. ⟨CLAUDE.md §Layout, §Testing⟩
-- **O-FM-01** `p2` Frontmatter is a `---` line at byte 0 (after an optional BOM), up to the next line that is exactly `---`. Any other placement is body text. ⟨properties.md §Property format⟩ [probe PR-12]
+- **O-FM-01** `p2` Frontmatter starts with a line that is exactly `---` at byte 0 (after an optional BOM; LF or CRLF) and ends at the next line that is exactly `---`. A trailing space, a leading blank line, `----`, an indented fence, a `...` close or a missing close all make it body text. An empty or invalid block is still frontmatter, with no properties. ⟨properties.md §Property format⟩ [probed D-006]
 - **O-FM-02** `p2` JSON frontmatter (`---` followed by a `{…}` object) is recognised and read. ⟨properties.md §JSON properties⟩
-- **O-HEAD-01** `p2` ATX headings use 1–6 `#` characters followed by a space. A heading section runs to the next heading of the same or a higher level. ⟨syntax.md §Headings⟩ [probe PR-13]
+- **O-HEAD-01** `p2` ATX headings use 1–6 `#` characters followed by a space, indented at most 3 spaces; closing `#`s are dropped from the text. Setext headings (`===` → 1, `---` → 2) are headings too. A heading section runs to the next heading of the same or a higher level. ⟨syntax.md §Headings⟩ [probed D-006]
 - **O-CODE-01** `p2` Fenced code uses ≥3 backticks or tildes, and closes with the same character at ≥ the opening length. Indented code is 4 spaces or a tab. Its content is opaque: no links, tags or block IDs are recognised inside. ⟨syntax.md §Code blocks⟩
 - **O-CODE-02** `p2` Inline code spans, including multi-backtick spans, are opaque. ⟨syntax.md §Inline code⟩
-- **O-CMT-01** `p2` An inline `%%…%%` comment stays on one line. A block comment starts with a line beginning `%%` and ends at the next `%%`. An unclosed block comment runs to the end of the file. Comment content is opaque to link rewriting. ⟨syntax.md §Comments⟩ [probe PR-14]
+- **O-CMT-01** `p2` An inline `%%…%%` comment stays on one line. A block comment starts with a line beginning `%%` and ends at the next `%%`. An unclosed block comment runs to the end of the file. Obsidian indexes links inside comments, so they count as links for backlinks and renames. ⟨syntax.md §Comments⟩ [probed D-006]
 - **O-MATH-01** `p2` `$…$` and `$$…$$` math spans are opaque. ⟨advanced-syntax.md §Math⟩ [policy]
 - **O-LINK-01** `p2` Wikilinks: `[[target]]`, `[[target.md]]`, `[[target#sub]]`, `[[target|display]]` and `[[#sub]]`. In a table, `\|` is the display separator. ⟨links.md; advanced-syntax.md §Format content within a table⟩
-- **O-LINK-02** `p2` Markdown internal links: `[text](dest)`, where `dest` is percent-encoded or wrapped in `<…>`, and `.md` is optional. A destination with a URI scheme is an external link. ⟨links.md §Supported formats; syntax.md §Escape blank spaces in links⟩ [probe PR-10]
+- **O-LINK-02** `p2` Markdown internal links: `[text](dest)`, where `dest` is percent-encoded or wrapped in `<…>`, and `.md` is optional. A destination with an unencoded space and no `<…>` is not a link. A destination with a URI scheme is an external link. ⟨links.md §Supported formats; syntax.md §Escape blank spaces in links⟩ [probed D-006]
 - **O-LINK-03** `p2` Subpaths: `#Heading`, `#H#Sub` (a chain of headings), and `#^blockid`. ⟨links.md §Link to a heading, §Link to a block⟩
 - **O-LINK-04** `p2` Embeds are `!` plus either link form. A trailing `|W` or `|WxH` on an image embed is a size, not display text. PDF subpaths `#page=N`, `#height=N` and their `&` combination are kept opaque. ⟨embeds.md; CHANGELOG-excerpts 1.12.0⟩
 - **O-LINK-05** `p2` A link to a non-Markdown file includes its extension. ⟨links.md §Link to a file⟩
 - **O-LINK-06** `p2` Quoted wikilinks in frontmatter text or list values are links. ⟨properties.md §Text, §List; bases-syntax.md §Files and links⟩
 - **O-BLK-01** `p2` Block IDs match `^[A-Za-z0-9-]+`. A block ID sits at the end of a paragraph or list-item line after a space, or alone on a line after a structured block (list, quote, callout or table), separated by blank lines. ⟨links.md §Link to a block in a note⟩
-- **O-TAG-01** `p2` An inline tag is `#` followed by letters, digits, `_`, `-`, `/` or other Unicode such as emoji. It contains at least one non-digit, has no spaces, ignores case, and nests with `/`. ⟨tags.md §Tag format⟩ [probe PR-15]
-- **O-TAG-02** `p2` Frontmatter `tags` is read as a list. Other shapes (a scalar, or a comma-separated string) are read the way Obsidian reads them. ⟨tags.md; properties.md §Tags⟩ [probe PR-15]
+- **O-TAG-01** `p2` An inline tag is `#` followed by letters, digits, `_`, `-`, `/` or other Unicode such as emoji, and it ends at any other character. It needs at least one non-digit, ignores case, and nests with `/`. A `#` directly after a letter, digit or `(` does not start a tag; `#a#b` is two tags; URL fragments and code are not tags. ⟨tags.md §Tag format⟩ [probed D-006]
+- **O-TAG-02** `p2` Frontmatter `tags` as a list (block or flow) gives one tag per item, with a leading `#` stripped. A plain one-word scalar is one tag. A scalar containing a space or comma gives no tags. The singular `tag` key gives no tags. ⟨tags.md; properties.md §Tags⟩ [probed D-006]
 - **O-CALL-01** `p2` A callout is `> [!type]` with an optional `+` or `-` and a title. Callouts can be nested. Types ignore case. The built-in types are `note abstract info todo tip success question warning failure danger bug example quote`, with aliases `summary tldr hint important check done help faq caution attention fail missing error cite`. Unknown types are treated as `note`. ⟨callouts.md⟩
 - **O-TASK-01** `p2` A task is a list item starting `[c]`, where `c` is any single character. A space means incomplete. ⟨syntax.md §Task lists⟩
 - **O-INL-01** `p2` Highlights `==…==` (including colour-emoji variants), footnotes `[^id]`, and inline footnotes `^[…]` are recognised, so a `^` inside them is never taken for a block ID. ⟨syntax.md §Bold, italics, highlights, §Footnotes⟩
-- **O-HTML-01** `p2` Whether links inside HTML blocks are indexed follows Obsidian's behaviour. ⟨obsidian-flavored-markdown.md⟩ [probe PR-14]
+- **O-HTML-01** `p2` Links inside inline HTML (`<span>…</span>`) are indexed. Links inside an HTML block (a line starting with a block tag such as `<div>`) are not. ⟨obsidian-flavored-markdown.md⟩ [probed D-006]
 
 ## P: Properties
 
 - **P-FM-01** `p2` Setting, removing or renaming a key rewrites only that key's lines. All other bytes stay identical, including key order, comments, quoting and indentation. ⟨CLAUDE.md §4⟩
 - **P-FM-02** `p2` Patching then reparsing gives the requested value, with every other key unchanged. This is verified by fuzzing. ⟨CLAUDE.md §Testing⟩
-- **P-TYPE-01** `p2` Types come from `.obsidian/types.json`. A type applies to that property name vault-wide. ⟨properties.md §Property types⟩ [probe PR-05]
+- **P-TYPE-01** `p2` Types come from `.obsidian/types.json`, shaped `{"types": {name: type}}` with type one of `text`, `multitext`, `number`, `checkbox`, `date`, `datetime`, `tags`, `aliases`. A type applies to that property name vault-wide. Changing a type rewrites no notes. ⟨properties.md §Property types⟩ [probed D-006]
 - **P-TYPE-02** `p2` Number: an integer or decimal literal, never an expression. ⟨properties.md §Number⟩
 - **P-TYPE-03** `p2` Checkbox: `true` or `false`. An empty value is indeterminate and is preserved. ⟨properties.md §Checkbox⟩
-- **P-TYPE-04** `p2` Date: `YYYY-MM-DD`. Date & time: `YYYY-MM-DDTHH:mm:ss`. Both are validated as real calendar values. ⟨properties.md §Date, §Date & time⟩ [probe PR-05]
+- **P-TYPE-04** `p2` Date: `YYYY-MM-DD`. Date & time: `YYYY-MM-DDTHH:mm:ss`, and `YYYY-MM-DDTHH:mm` is read too. New values are written unquoted with seconds, as Obsidian's picker writes them. Both are validated as real calendar values. ⟨properties.md §Date, §Date & time⟩ [probed D-006]
 - **P-TYPE-05** `p2` The Tags type is used only by `tags`, and assigning it to another name is refused. ⟨properties.md §Tags⟩
-- **P-TYPE-06** `p2` A value whose name has no recorded type is accepted. Its inferred type follows Obsidian's inference. ⟨properties.md⟩ [probe PR-09]
+- **P-TYPE-06** `p2` A value whose name has no recorded type is accepted. Its inferred type follows the table in D-006 (for example, a number is `number`, `2024-02-29` is `date`, a quoted number is `text`). ⟨properties.md⟩ [probed D-006]
 - **P-TYPE-07** `p2` A value that conflicts with the recorded type is refused, with a hint naming the type. ⟨CLAUDE.md §4⟩
 - **P-LINK-01** `p2` Internal links written into text or list values are always quoted. ⟨properties.md §Text, §List⟩
 - **P-KEY-01** `p2` Duplicate keys in a note are reported. A write never creates a duplicate. ⟨properties.md §Property format⟩
@@ -148,23 +149,23 @@ Each requirement is a single line:
 ## L: Links
 
 - **L-IDX-01** `p3` The index holds every link and embed in `.md` files (body and frontmatter), every `.canvas` file node, and every `.base` embed. ⟨CLAUDE.md §3; CHANGELOG-excerpts 1.12⟩
-- **L-RES-01** `p3` A target resolves with or without `.md`. A target containing `/` resolves from the vault root. ⟨links.md §Supported formats⟩ [probe PR-01]
-- **L-RES-02** `p3` A bare name shared by several files resolves by Obsidian's tie-break rule. If no rule settles it, the result is `AmbiguousError` with the candidates. ⟨CLAUDE.md §3⟩ [probe PR-01]
-- **L-RES-03** `p3` Target matching follows Obsidian's case rule. ⟨CLAUDE.md §Known undocumented⟩ [probe PR-02]
-- **L-RES-04** `p3` Frontmatter `aliases` take part in resolution only as Obsidian does. ⟨links.md §Change the link display text⟩ [probe PR-03]
-- **L-RES-05** `p3` Relative Markdown-link destinations (`./`, `../`) and percent or `<…>` decoding resolve as Obsidian does. ⟨links.md⟩ [probe PR-10]
+- **L-RES-01** `p3` A target resolves with or without `.md`. A target containing `/` matches a file whose path ends with it (`a/Tie` finds `pr01/a/Tie.md`), or the full vault path. ⟨links.md §Supported formats⟩ [probed D-006]
+- **L-RES-02** `p3` A bare name shared by several files resolves to the one in the source note's folder, then to the one with the shortest path. If several remain, the result is `AmbiguousError` with the candidates (Obsidian's own choice there is not predictable). ⟨CLAUDE.md §3⟩ [probed D-006]
+- **L-RES-03** `p3` Target matching ignores case. ⟨CLAUDE.md §Known undocumented⟩ [probed D-006]
+- **L-RES-04** `p3` Frontmatter `aliases` do not take part in resolution: `[[Alias]]` is unresolved unless a file has that name. ⟨links.md §Change the link display text⟩ [probed D-006]
+- **L-RES-05** `p3` Markdown-link destinations are percent-decoded or `<…>`-unwrapped, then resolved like wikilinks; `./`, `../` and a leading `/` work, and a bare file name falls back to name lookup. ⟨links.md⟩ [probed D-006]
 - **L-RES-06** `p3` `resolve_link` returns the resolved path, or every candidate for an ambiguous link. ⟨CLAUDE.md §Tools⟩
 - **L-BACK-01** `p3` Backlinks include links from `.md` files and from `.canvas` file nodes. ⟨CHANGELOG-excerpts 1.12⟩
 - **L-UNRES-01** `p3` Unresolved links are listed with their source file and line. ⟨cli.md §unresolved⟩
 - **L-ORPH-01** `p3` An orphan is a file with no incoming links. ⟨cli.md §orphans⟩
 - **L-REN-01** `p5` A note rename or move rewrites every link that resolves to the old path: wikilinks, Markdown links, embeds, frontmatter links and canvas file nodes. Subpaths and display text are kept. ⟨CLAUDE.md §3; links.md⟩
-- **L-REN-02** `p5` A rewritten link uses the vault's `newLinkFormat` (shortest, relative or absolute) and `useMarkdownLinks` style, with Markdown destinations percent-encoded. ⟨settings.md §New link format, §Use Wikilinks⟩ [probe PR-04]
+- **L-REN-02** `p5` A rewritten link uses the vault's `newLinkFormat`: shortest = the bare name when no other file has it, else the full vault path; relative = the path from the note's folder; absolute = the full vault path. `.md` is dropped and other extensions kept. Markdown style writes `[name](dest)` with only spaces percent-encoded. ⟨settings.md §New link format, §Use Wikilinks⟩ [probed D-006]
 - **L-REN-03** `p5` Links inside code, math and comments are never rewritten. ⟨CLAUDE.md §3⟩
 - **L-REN-04** `p5` A link that would become ambiguous is reported and left unchanged. ⟨CLAUDE.md §3⟩
 - **L-REN-05** `p5` A rename dry run lists every file and line that would change, with the diff. ⟨CLAUDE.md §3⟩
 - **L-REN-06** `p5` A rename is all-or-nothing. If any write fails, every file already written is restored. ⟨CLAUDE.md §3⟩
 - **L-REN-07** `p5` A rename round trip A → B → A restores every file byte for byte. ⟨CLAUDE.md §Testing⟩
-- **L-REN-08** `p5` `rename_heading` updates `[[Note#Heading]]` links, including `#H#Sub` chains, using Obsidian's heading-to-link-text rule. ⟨links.md §Link to a heading⟩ [probe PR-13]
+- **L-REN-08** `p5` `rename_heading` updates `[[Note#Heading]]` links, including `#H#Sub` chains. The link text is the heading text as written, with closing `#`s dropped. ⟨links.md §Link to a heading⟩ [probed D-006]
 - **L-REN-09** `p5` Moving a block ID updates `[[Note#^id]]` links. ⟨links.md §Link to a block⟩
 - **L-REN-10** `p5` `move_folder` is link-aware, with the same guarantees as L-REN-01 to L-REN-07. ⟨CLAUDE.md §Tools⟩
 
@@ -177,7 +178,7 @@ Each requirement is a single line:
 - **C-EDGE-01** `p6` An edge has `id`, `fromNode` and `toNode`, which must reference existing nodes. Optional fields: `fromSide` and `toSide` (`top`, `right`, `bottom` or `left`), `fromEnd` (default `none`) and `toEnd` (default `arrow`), each `none` or `arrow`, plus `color` and `label`. ⟨spec-1.0.md §Edges⟩
 - **C-COL-01** `p6` A colour is a hex string or a preset from `"1"` to `"6"`. ⟨spec-1.0.md §Color⟩
 - **C-ORD-01** `p6` Node array order is z-order and is preserved by edits. New nodes are appended. ⟨spec-1.0.md §Nodes⟩
-- **C-PRES-01** `p6` Unknown keys and key order are preserved. Output formatting matches what Obsidian writes. ⟨CLAUDE.md §2⟩ [probe PR-16]
+- **C-PRES-01** `p6` Unknown keys and key order are preserved. Edits keep the file's existing indentation; new files use tab indentation. ⟨CLAUDE.md §2⟩ [policy]
 - **C-EDIT-01** `p6` `edit_canvas` adds, updates and removes nodes and edges. Removing a node also removes its edges. The result is validated against C-SCH-01 to C-COL-01. An etag is required. ⟨CLAUDE.md §Tools⟩
 
 ## B: Bases
@@ -230,25 +231,6 @@ Each requirement is a single line:
 
 ---
 
-## Probe index
+## Probe results
 
-The procedures are in `docs/probes/CHECKLIST.md`, and the results go in `docs/DECISIONS.md`.
-
-| Probe | Question | Requirements |
-|---|---|---|
-| PR-01 | Tie-break between equally short paths; how path-bearing targets resolve | L-RES-01, L-RES-02 |
-| PR-02 | Case sensitivity of link targets | L-RES-03 |
-| PR-03 | Do frontmatter `aliases` resolve links? | L-RES-04 |
-| PR-04 | Link text written for each `newLinkFormat` × `useMarkdownLinks` | L-REN-02 |
-| PR-05 | `types.json` format; date & time with or without seconds | P-TYPE-01, P-TYPE-04 |
-| PR-06 | `app.json` keys, defaults, and `userIgnoreFilters` and `attachmentFolderPath` encodings | V-CFG-01, V-CFG-03, V-SRCH-03, V-ATT-01 |
-| PR-07 | Lock file | V-LOCK-01 |
-| PR-08 | Watcher reaction to external atomic rename and to in-place write | V-WRITE-03 |
-| PR-09 | Type inference for untyped properties | P-TYPE-06 |
-| PR-10 | Markdown-link destinations: relative paths, `%20`, `<…>` | O-LINK-02, L-RES-05 |
-| PR-11 | `daily-notes.json` and `templates.json` keys | V-CFG-02, V-DAILY-01, V-TPL-01 |
-| PR-12 | Frontmatter delimiter edge cases (CRLF, `...`, leading blank line) | O-FM-01 |
-| PR-13 | Heading forms (setext?) and heading-to-link-text conversion | O-HEAD-01, L-REN-08 |
-| PR-14 | Are links in comments and HTML blocks indexed (shown as backlinks)? | O-CMT-01, O-HTML-01 |
-| PR-15 | Tag boundaries; scalar and comma forms of frontmatter `tags` | O-TAG-01, O-TAG-02 |
-| PR-16 | JSON formatting Obsidian uses when saving a `.canvas` | C-PRES-01 |
+The probe results and the assumptions made where probing stopped are in `docs/DECISIONS.md` (D-006).

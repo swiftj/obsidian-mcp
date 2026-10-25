@@ -1,5 +1,7 @@
 # Manual probe checklist (Phase 0)
 
+> **Stopped after step 3 (2026-10-25)** at the owner's request. The results and the assumptions made for the remaining steps are in `docs/DECISIONS.md` D-006.
+
 These probes answer the `[probe PR-xx]` questions in `docs/SPEC_CONTRACT.md`, using a **scratch vault** made from `testdata/probes/vault/`. All of its content is made up. `scripts/probe.sh` refuses to run anywhere except under a system `$TMPDIR`. Never open a real vault for this.
 
 **How it works:**
@@ -21,7 +23,7 @@ Tested on Obsidian **1.14.4** (macOS).
 
 ## 1. First dump (default settings) — PR-01/02/03/04/06/09/10/12/13/14/15
 1. Run `! pbcopy < scripts/probe-dump.js` to copy the snippet.
-2. In Obsidian, press `Cmd+Opt+I`, open the **Console** tab, and paste with `Cmd+V`. If Chrome asks, type `allow pasting` first, then paste again. Press Enter.
+2. Click into the **ObsProbe** window first (each vault has its own window and its own console). Then press `Cmd+Opt+I`, open the **Console** tab, and paste with `Cmd+V`. If Chrome asks, type `allow pasting` first, then paste again. Press Enter.
 3. Run `! scripts/probe.sh snap dump-defaults`.
 
 ## 2. Property types — PR-05

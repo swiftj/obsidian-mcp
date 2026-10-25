@@ -21,7 +21,10 @@
 		try { out[name] = plain(await fn()); } catch (e) { out.errors[name] = String(e); }
 	};
 	const file = (p) => app.vault.getAbstractFileByPath(p);
-	if (!file('pr01/src.md')) { console.error('not the probe vault; aborting'); return; }
+	if (!file('pr01/src.md')) {
+		console.error(`this window's vault is "${app.vault.getName()}", not ObsProbe; aborting (nothing written)`);
+		return;
+	}
 
 	const cfgKeys = ['newLinkFormat', 'useMarkdownLinks', 'alwaysUpdateLinks', 'newFileLocation',
 		'newFileFolderPath', 'attachmentFolderPath', 'userIgnoreFilters', 'trashOption',
