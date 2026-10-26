@@ -91,7 +91,7 @@ func (v *Vault) Create(ctx context.Context, p string, data []byte, o WriteOption
 	if err := v.mkdirs("create", rel, true); err != nil {
 		return nil, err
 	}
-	jdir, err := v.journalRecord(JournalEntry{Op: "create", Path: rel}, nil)
+	jdir, err := v.journalRecord(JournalEntry{Op: "create", Path: rel, ETagAfter: res.ETag}, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func (v *Vault) replace(ctx context.Context, p, etag string, o WriteOptions, cha
 	if o.DryRun {
 		return res, nil
 	}
-	jdir, err := v.journalRecord(JournalEntry{Op: "replace", Path: rel, ETagBefore: curTag}, cur)
+	jdir, err := v.journalRecord(JournalEntry{Op: "replace", Path: rel, ETagBefore: curTag, ETagAfter: res.ETag}, cur)
 	if err != nil {
 		return nil, err
 	}

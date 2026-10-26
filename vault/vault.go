@@ -35,6 +35,8 @@ type Vault struct {
 	journal *Journal
 	log     *slog.Logger
 	mu      sync.Mutex // serialises every write (V-WRITE-04)
+	// testFail, when set by a test, fails Apply before step i.
+	testFail func(i int) error
 }
 
 // Open opens the vault folder dir.

@@ -42,12 +42,16 @@ type Journal struct {
 type JournalEntry struct {
 	ID         string    `json:"id"`
 	Vault      string    `json:"vault"`
-	Op         string    `json:"op"` // create, replace, trash or restore
+	Op         string    `json:"op"` // create, replace, trash, restore or move
 	Path       string    `json:"path"`
-	NewPath    string    `json:"new_path,omitempty"` // where trash and restore moved the file
+	NewPath    string    `json:"new_path,omitempty"` // where trash, restore and move put the file
 	Time       time.Time `json:"time"`
 	ETagBefore string    `json:"etag_before,omitempty"` // "" when the file did not exist
+	ETagAfter  string    `json:"etag_after,omitempty"`  // the file's etag after the change
 	HasData    bool      `json:"has_data"`              // whether the previous bytes are kept
+	// Batch groups the entries of one change set; Undo reverses them together.
+	Batch     string `json:"batch,omitempty"`
+	BatchSize int    `json:"batch_size,omitempty"` // entries in the batch
 }
 
 // OpenJournal opens or creates the journal folder dir. capBytes <= 0 means

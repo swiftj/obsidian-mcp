@@ -69,7 +69,7 @@ func (v *Vault) Trash(ctx context.Context, p, etag string, o WriteOptions) (*Res
 	if err := v.mkdirs("trash", dst, false); err != nil {
 		return nil, err
 	}
-	jdir, err := v.journalRecord(JournalEntry{Op: "trash", Path: rel, NewPath: dst, ETagBefore: etag}, cur)
+	jdir, err := v.journalRecord(JournalEntry{Op: "trash", Path: rel, NewPath: dst, ETagBefore: etag, ETagAfter: etag}, cur)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (v *Vault) Restore(ctx context.Context, trashPath, to string, o WriteOption
 	if err := v.mkdirs("restore", dst, true); err != nil {
 		return nil, err
 	}
-	jdir, err := v.journalRecord(JournalEntry{Op: "restore", Path: src, NewPath: dst}, nil)
+	jdir, err := v.journalRecord(JournalEntry{Op: "restore", Path: src, NewPath: dst, ETagBefore: res.ETag, ETagAfter: res.ETag}, nil)
 	if err != nil {
 		return nil, err
 	}
