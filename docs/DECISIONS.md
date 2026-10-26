@@ -245,3 +245,60 @@ The dependency is added in Phase 2, not before.
 - **Tag filter:** matches inline and frontmatter tags. A tag filter also matches nested tags.
 - **Property filter:** matches a scalar or any list item, ignoring case; deprecated keys are read as plural. An empty value only needs the property.
 - **Tag listing:** counts notes. A parent's count includes notes that have only a nested tag.
+
+## D-011 Phase 4 choices: MCP server v1 (2026-10-26)
+
+**Dependencies**
+- **`github.com/modelcontextprotocol/go-sdk` v1.8.0** is the official SDK (CLAUDE.md), and the latest release (2026-09-04). It is pure Go and its transitive modules are pure Go; `make verify-static` passes.
+- **`golang.org/x/sys` was raised to v0.44.0.** The SDK pulls in v0.41.0, and govulncheck flagged a Windows-only advisory (GO-2026-5024) in that version. We never build for Windows, but the bump keeps the scan clean.
+
+**Config** (X-SRV-02)
+- **Vaults** are positional args. `NAME=FOLDER` names a vault, when NAME contains no slash; otherwise the folder name is used. Duplicate names, compared ignoring case, are an error.
+- **The first vault is the default** when a tool omits `vault`, and an unknown name is an error.
+- **Flags win over env.** Flags must come before the vault args (Go `flag` rules).
+- **Journal:** `OBS_MCP_JOURNAL` takes `on` (`~/.local/state/obs-mcp/journal`), `off`, or an absolute folder. The 500 MB cap is fixed. Read-only mode opens no journal.
+
+**Output** (X-SRV-06, X-SRV-07) [policy]
+- **Untrusted text:** each result is a short line of server text, then the vault-derived text in one or more blocks:
+  - the block starts `<<<NOTE-CONTENT nonce=N label>>>` and ends `<<<END NOTE-CONTENT nonce=N>>>`
+  - N is 16 random hex digits, new for each call, so a note can't end the block early
+  - paths, link text, snippets, property values and diffs all count as vault text
+- **Structured content** carries paths, etags, counts, cursors, properties and outline. Note bodies, snippets and diffs appear only in the text.
+- **Page sizes:**
+  - listings default to 50 items, with a maximum of 200, and each page's text is capped at 64 KB
+  - search keeps the library's page size of 20, with a maximum of 100
+  - a cursor is an offset into the result list
+- **Read caps:** `read_note` returns at most 256 KB, cut on a line boundary, with a hint to continue with `start_line`. `read_notes` takes at most 20 paths and 512 KB in all.
+- **Section and block reads:** `read_note` by heading includes the heading line and the section's trailing blank lines. By block, it returns the block's text and, for a standalone ID line, that line too.
+
+**Tools** [policy]
+- **`.md` only:** `create_note`, `edit_note` and `replace_note` write notes only. Canvas and Bases get validated tools in Phase 6.
+- **`list_trash`** is registered in read-only mode too: it only reads.
+- **Annotations:**
+  - read tools: `readOnlyHint` true, not destructive, idempotent
+  - `create_note` and `restore_from_trash`: not destructive
+  - every other write tool: destructive
+  - no write tool is idempotent
+  - every tool: `openWorldHint` false
+- **`delete_note`** returns the path inside `.trash`, which is what `restore_from_trash` and `list_trash` use.
+- **`orphans`** has a `notes_only` filter. By default it lists files of any kind (D-010).
+
+**Errors** (X-SRV-10)
+- Typed errors become tool errors whose text ends with `Hint: …`:
+
+  | Error | Hint |
+  |---|---|
+  | conflict | call `read_note` again and retry with the new etag |
+  | file already exists | read it, then edit or replace it with its etag, or pick another path |
+  | missing etag | read the note first |
+  | not found | check the path with `list_notes` or `search` |
+  | path refused | the path rules |
+  | ambiguous link | the candidates |
+  | edit target | the candidates, or the tool that lists headings and block IDs |
+  | property type | the type hint from `props` |
+
+**Logging** (X-SRV-01)
+- One INFO line per tool call: tool, vault, path, duration and ok/error.
+- The arguments, which can hold note text, are logged only at DEBUG.
+
+**Commits:** the read and write tools landed in one commit (`feat(mcpserver): …`), not two. They share the server core, and splitting them wouldn't leave a commit that builds.
