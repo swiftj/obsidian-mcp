@@ -302,3 +302,103 @@ The dependency is added in Phase 2, not before.
 - The arguments, which can hold note text, are logged only at DEBUG.
 
 **Commits:** the read and write tools landed in one commit (`feat(mcpserver): …`), not two. They share the server core, and splitting them wouldn't leave a commit that builds.
+
+## D-012 Phase 5 choices: organise (2026-10-26)
+
+**Spec changes** (owner-approved with the Phase 5 plan)
+- **L-REN-03** now says only code and math are never rewritten. Links in comments are rewritten, as D-006 already decided, because Obsidian indexes them.
+- **L-REN-09** is now tested through a new `rename_block` tool, which was added to X-TOOL-08. No listed tool moves blocks between notes.
+
+**Change sets (`Vault.Apply`)**
+- **What a set holds:** writes, creates, and moves (optionally with new bytes). A path may appear in only one change.
+- **Checks before writing:** under the write lock, every etag and destination is checked before the first write. A conflict refuses the whole set.
+- **All-or-nothing:** the steps then run with the atomic primitives. On a failure, the finished steps are reversed newest first. If that reversal fails too, the error is a `*RollbackError` that keeps both errors.
+- **Moving:** moves may carry any visible file kind, attachments included. Rewritten bytes are allowed only for `.md`, `.canvas` and `.base`, and a move can't change the extension.
+- **Empty folders:** after a set succeeds, the source folders its moves emptied are removed, as Obsidian does when moving a folder. Folders that still hold anything, hidden files included, stay.
+- **Journal:** every step is journaled under one batch ID with its size and `etag_after`.
+
+**Undo**
+- **What it undoes:** the newest single write or whole batch. It refuses when a file no longer has its `etag_after`, or when the journal has pruned part of the batch.
+- **Reversal:**
+
+  | Original change | Undo |
+  |---|---|
+  | create | moves the file to `.trash`, which is safer than deleting it |
+  | replace | writes the previous bytes back |
+  | trash, restore, move | moves the file back, restoring its old bytes if the move rewrote them |
+
+- **No undo stack:** undo isn't journaled; its entries are removed, so the next undo goes one step further back.
+- **Not journaled:** `create_folder` is not journaled, so undo skips it.
+
+**Link rewriting [policy]** (L-REN-01..10)
+- **Which links change:** every link that resolved before a move is resolved again, as written, from its source's new path against the file set after the move. It is rewritten only if it would no longer reach the moved target. This also fixes:
+  - relative links inside moved notes
+  - links elsewhere that would quietly re-resolve, or become ambiguous, because a same-named file arrived
+- **How they're written:** each rewrite keeps the link's own style (a wikilink stays a wikilink, Markdown stays Markdown) and uses `newLinkFormat`.
+  - Candidates are tried in order: the vault's format, then the full path, then a `./` relative path.
+  - The first one that resolves back to the target is used. If none does, the link is reported and left alone (L-REN-04).
+- **Where the bytes change:**
+  - **Body links:** only the target and subpath spans change.
+  - **Frontmatter links:** patched where their text appears as written. One written with YAML escapes, or one whose new text would need escaping, is reported and left alone.
+  - **Canvas file nodes:** the node's `"file"` and `"subpath"` JSON string tokens are patched in place; JSON is written without HTML escaping.
+- **Re-check:** every patched file is parsed again. If any link reads back differently from the plan, that file is left alone and reported.
+- **Round trips:** A → B → A is byte-exact when the links were already written in the vault's format, which is what L-REN-07 tests. A link written in another form, such as a full path in a shortest-format vault, comes back in the vault's format.
+- **Heading and block renames:**
+  - `rename_heading` matches subpath chains like a heading path: exact text first, then ignoring case. With several equal headings, the first in the note is the one meant [assumed: Obsidian opens the first].
+  - A Markdown link's subpath is written with spaces as `%20`.
+  - The note's text is patched only in the heading's text, so `#` markers and closing `#`s stay. New heading text can't contain `#`, `|`, `[[`, `]]` or a line break, or start with `^`.
+  - `rename_block` takes letters, digits and `-` only, and refuses an ID the note already has.
+
+**Tag and property renames [policy]** (P-TAGREN-01, P-REN-01)
+- **Inline tags:** renamed in place when the folded name equals the old tag or starts with `old/`. The nested suffix keeps its casing.
+- **Frontmatter `tags`:** rewritten with `props.Set`, so only that key's lines change. A one-word scalar becomes a one-item list, the form Obsidian writes.
+- **Property renames:** a note that already has the new name is skipped and listed. A note whose frontmatter can't be parsed is listed too, because it might hold the property.
+
+**Etags for organise tools [policy]**
+- Moves and renames of files don't take an etag: they don't change the moved file's content.
+- `rename_heading` and `rename_block` change the named note, so they take its etag.
+- Every file a plan touches is etag-checked by `Apply`, so an edit between planning and applying refuses the whole set.
+
+**Daily notes and templates [assumed]** (V-DAILY-01/02, V-TPL-01/02)
+- **Moment.js tokens supported** (English names):
+  - year: `YYYY YY`
+  - quarter: `Q`
+  - month: `M MM MMM MMMM`
+  - day: `D DD Do`
+  - day of year: `DDD DDDD`
+  - weekday: `d dd ddd dddd E`
+  - ISO week: `W WW GG GGGG`
+  - hour: `H HH h hh`
+  - minute and second: `m mm s ss`
+  - AM/PM: `A a`
+  - literals: `[text]` and `\x`
+- **Refused:** any other run of a Moment.js token letter (`X x k S Z z w g e N L l y Y`, and runs such as `HHH` or `Mo`), with the token named. Letters that aren't Moment.js tokens are copied as written.
+- **Template variables:**
+  - matched as `{{ name }}` or `{{ name:FORMAT }}`, with names ignoring case
+  - `{{title:…}}` is left as written
+  - other `{{…}}` text and all `<% %>` text are copied verbatim
+- **Daily notes:**
+  - `{{date}}` is the note's date in the daily-note format; `{{time}}` is the current time in `templates.json`'s time format (default `HH:mm`)
+  - a template setting without an extension gets `.md`
+  - a missing template is an error
+  - `append_to_daily_note` creates the note first if needed
+- **Templates:**
+  - `create_from_template` takes a vault path, or a name in the template folder
+  - `{{date}}` and `{{time}}` are now, in `templates.json`'s formats
+  - `list_templates` needs the template folder to be set
+  - `list_templates` is read-only, so it is registered in read-only mode too
+
+**Attachments [policy]** (V-ATT-01)
+- **Where the file goes** (`attachmentFolderPath`):
+  - `/` or empty: the vault root
+  - `./`: the note's folder
+  - `./x`: subfolder `x` of the note's folder
+  - anything else: that vault folder
+- **Name clashes:** ` 1`, ` 2`, … are added before the extension [assumed].
+- **The source file** must be an absolute path to a regular file:
+  - no symlink, and no segment starting with `.` (such as `~/.ssh`)
+  - image, audio, video or PDF only
+  - at most 100 MB
+- **Writing:** `Vault.CreateAttachment` is the only way to write these kinds.
+- **The returned embed:** `![[target]]`, or `![](target)` with `useMarkdownLinks`, in `newLinkFormat`.
+- **Undo:** an attachment is journaled as a create, so undo moves it to `.trash`.

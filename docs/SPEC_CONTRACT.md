@@ -163,13 +163,13 @@ Each requirement is a single line:
 - **L-ORPH-01** `p3` An orphan is a file with no incoming links. ⟨cli.md §orphans⟩
 - **L-REN-01** `p5` A note rename or move rewrites every link that resolves to the old path: wikilinks, Markdown links, embeds, frontmatter links and canvas file nodes. Subpaths and display text are kept. ⟨CLAUDE.md §3; links.md⟩
 - **L-REN-02** `p5` A rewritten link uses the vault's `newLinkFormat`: shortest = the bare name when no other file has it, else the full vault path; relative = the path from the note's folder; absolute = the full vault path. `.md` is dropped and other extensions kept. Markdown style writes `[name](dest)` with only spaces percent-encoded. ⟨settings.md §New link format, §Use Wikilinks⟩ [probed D-006]
-- **L-REN-03** `p5` Links inside code, math and comments are never rewritten. ⟨CLAUDE.md §3⟩
+- **L-REN-03** `p5` Links inside code and math are never rewritten. Links inside comments are links to Obsidian, so they are rewritten (D-006, D-012). ⟨CLAUDE.md §3⟩ [probed D-006]
 - **L-REN-04** `p5` A link that would become ambiguous is reported and left unchanged. ⟨CLAUDE.md §3⟩
 - **L-REN-05** `p5` A rename dry run lists every file and line that would change, with the diff. ⟨CLAUDE.md §3⟩
 - **L-REN-06** `p5` A rename is all-or-nothing. If any write fails, every file already written is restored. ⟨CLAUDE.md §3⟩
 - **L-REN-07** `p5` A rename round trip A → B → A restores every file byte for byte. ⟨CLAUDE.md §Testing⟩
 - **L-REN-08** `p5` `rename_heading` updates `[[Note#Heading]]` links, including `#H#Sub` chains. The link text is the heading text as written, with closing `#`s dropped. ⟨links.md §Link to a heading⟩ [probed D-006]
-- **L-REN-09** `p5` Moving a block ID updates `[[Note#^id]]` links. ⟨links.md §Link to a block⟩
+- **L-REN-09** `p5` `rename_block` renames a `^id` and updates `[[Note#^id]]` links (D-012). ⟨links.md §Link to a block⟩
 - **L-REN-10** `p5` `move_folder` is link-aware, with the same guarantees as L-REN-01 to L-REN-07. ⟨CLAUDE.md §Tools⟩
 
 ## C: Canvas (JSON Canvas 1.0)
@@ -215,7 +215,7 @@ Each requirement is a single line:
 - **X-TOOL-05** `p4` Write tools: `create_note`, `edit_note` and `replace_note`. `edit_note` has the ops `replace_section`, `insert_after_heading`, `append`, `prepend`, `replace_text` (with an expected count) and `replace_block`. ⟨CLAUDE.md §Tools⟩
 - **X-TOOL-06** `p4` Property tools: `set_properties`, `remove_properties`. ⟨CLAUDE.md §Tools⟩
 - **X-TOOL-07** `p4` Trash tools: `delete_note`, `restore_from_trash`, `list_trash`. ⟨CLAUDE.md §Tools⟩
-- **X-TOOL-08** `p5` Organise tools: `move_note`, `rename_note`, `create_folder`, `move_folder`, `rename_tag`, `rename_property`, `rename_heading`. ⟨CLAUDE.md §Tools⟩
+- **X-TOOL-08** `p5` Organise tools: `move_note`, `rename_note`, `create_folder`, `move_folder`, `rename_tag`, `rename_property`, `rename_heading`, `rename_block`. ⟨CLAUDE.md §Tools; D-012⟩
 - **X-TOOL-09** `p5` Daily-note and template tools: `open_daily_note`, `append_to_daily_note`, `list_templates`, `create_from_template`. ⟨CLAUDE.md §Tools⟩
 - **X-TOOL-10** `p5` `attach_file` and `undo_last_write`. ⟨CLAUDE.md §Tools⟩
 - **X-TOOL-11** `p6` Canvas and Bases tools: `read_canvas`, `edit_canvas`, `read_base`, `create_base`, `edit_base`. ⟨CLAUDE.md §Tools⟩
