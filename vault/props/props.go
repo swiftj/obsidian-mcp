@@ -80,6 +80,8 @@ type Property struct {
 // Link is a wikilink inside a frontmatter string value (O-LINK-06).
 type Link struct {
 	Path string // the key, plus ".N" for a list item: "rel", "rels.0"
+	Line int    // the 1-based line of the value in the note
+	// Link's spans are offsets into the property value, not the note.
 	ofm.Link
 }
 
@@ -388,9 +390,10 @@ func (f *Frontmatter) collectLinks(key string, n *yaml.Node) {
 		if s.Kind != yaml.ScalarNode || s.Tag != "!!str" || !strings.Contains(s.Value, "[[") {
 			return
 		}
+		line := bytes.Count(f.doc.Src[:f.doc.Frontmatter.Body.Start], []byte("\n")) + s.Line
 		for _, l := range ofm.Parse([]byte(s.Value)).Links {
 			if !l.Markdown {
-				f.Links = append(f.Links, Link{Path: path, Link: l})
+				f.Links = append(f.Links, Link{Path: path, Line: line, Link: l})
 			}
 		}
 	}

@@ -21,7 +21,18 @@ func RepoRoot() string {
 // returns that folder's path.
 func CopyVault(t testing.TB, name string) string {
 	t.Helper()
-	src := filepath.Join(RepoRoot(), "testdata", "vaults", name)
+	return copyTree(t, filepath.Join(RepoRoot(), "testdata", "vaults", name), name)
+}
+
+// CopyProbeVault copies the Phase 0 probe vault, testdata/probes/vault,
+// into a fresh temporary folder and returns that folder's path.
+func CopyProbeVault(t testing.TB) string {
+	t.Helper()
+	return copyTree(t, filepath.Join(RepoRoot(), "testdata", "probes", "vault"), "probes")
+}
+
+func copyTree(t testing.TB, src, name string) string {
+	t.Helper()
 	dst := filepath.Join(t.TempDir(), name)
 	if err := os.CopyFS(dst, os.DirFS(src)); err != nil {
 		t.Fatalf("copy vault %s: %v", name, err)

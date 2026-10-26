@@ -92,18 +92,22 @@ func TestReadShapes(t *testing.T) {
 
 func TestFrontmatterLinks(t *testing.T) {
 	// O-LINK-06, from the probe vault's pr14 frontmatter cases.
-	for file, want := range map[string]string{
-		"pr14/in-frontmatter-quoted.md":   "rel",
-		"pr14/in-frontmatter-list.md":     "rels.0",
-		"pr14/in-frontmatter-unquoted.md": "",
+	for file, want := range map[string]struct {
+		path string
+		line int
+	}{
+		"pr14/in-frontmatter-quoted.md":   {"rel", 2},
+		"pr14/in-frontmatter-list.md":     {"rels.0", 3},
+		"pr14/in-frontmatter-unquoted.md": {"", 0},
 	} {
 		f := Read(ofm.Parse(probeFile(t, file)))
 		var got string
+		var line int
 		if len(f.Links) == 1 && f.Links[0].Target == "Target14" {
-			got = f.Links[0].Path
+			got, line = f.Links[0].Path, f.Links[0].Line
 		}
-		if got != want || (want == "" && len(f.Links) != 0) {
-			t.Errorf("O-LINK-06 %s links = %+v; want path %q", file, f.Links, want)
+		if got != want.path || line != want.line || (want.path == "" && len(f.Links) != 0) {
+			t.Errorf("O-LINK-06 %s links = %+v; want %+v", file, f.Links, want)
 		}
 	}
 }
