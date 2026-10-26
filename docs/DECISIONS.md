@@ -207,3 +207,41 @@ The dependency is added in Phase 2, not before.
 - **`replace_block`** keeps the ` ^id` marker. Block IDs are compared case-insensitively.
 - **No line-ending normalisation:** edits and property writes don't normalise line endings, so mixed-ending files keep every byte outside the edit. `Replace`, which rewrites the whole file, still converts to the file's style (V-WRITE-05).
 - **Spec additions:** V-EDIT-01..03 were added for the library edit ops, which CLAUDE.md puts in Phase 2. The owner approved this with the Phase 2 plan.
+
+## D-010 Phase 3 choices: links and search (2026-10-25)
+
+**Excluded files (assumed)** (V-SRCH-03)
+- A `userIgnoreFilters` entry wrapped in slashes (`/re/`) is a regular expression, matched anywhere in the path with Go's `regexp`. An entry that doesn't compile is ignored.
+- Any other entry is a case-sensitive path prefix, which covers the observed folder form `pr06/excluded/`.
+- Only the folder form was probed. The rest follows existing Obsidian tools.
+
+**Resolver** (L-RES-01..05)
+- **Order:**
+  1. An empty target is the note itself.
+  2. A target starting with `./`, `../` or `/` is a path relative to the note's folder or to the vault root. Nothing else is tried, and a path that climbs out of the vault is unresolved.
+  3. Otherwise, an exact vault path wins, then a path relative to the note's folder.
+  4. Otherwise, every file whose path ends with the target at a folder boundary is a candidate. The one in the note's folder wins, then the shortest path, and a tie is ambiguous (D-006).
+- **Matching:** it ignores case, and `.md` is optional. `X.md` is preferred over a file named exactly `X`.
+- **Candidates:** any visible file, attachments included. Hidden and denied files are never candidates, but excluded files are.
+- **Canvas file nodes** resolve the same way. Their `file` is normally a full vault path.
+
+**Index**
+- **Lazy, incremental:** both indexes are built on first use. Each query re-lists the vault and re-reads only files whose modification time or size changed. If a file is added or removed, every link is re-resolved, which is cheap: it's map lookups.
+- **10k notes:** first build plus query takes about 3 s for links (400k links) and about 1 s for search; warm queries take 40–60 ms (Apple silicon).
+- **Canvas:** decoded minimally (`file` nodes only) until Phase 6 adds validation. An invalid canvas gives no links.
+- **Backlinks and orphans [policy]:** a note's links to itself don't count as backlinks or stop it being an orphan. Orphans are files of any kind with no incoming link from another file.
+- **Unresolved:** ambiguous links aren't counted as unresolved. They carry their candidates instead.
+- **Frontmatter links:** these carry the line of their value. Their spans are offsets into the value, so a Phase 5 rewrite patches the property, not the note bytes.
+
+**Search [policy]** (V-SRCH-01..05)
+- **Tokens:** runs of letters, marks and digits, lower-cased, without stemming. Han, Hiragana and Katakana are one token per character.
+- **What's indexed:** the whole file, including frontmatter, plus the note's name, which counts twice.
+- **Queries:**
+  - every word must match, and a `"quoted phrase"` must appear verbatim, ignoring case
+  - ranking is BM25 (k1 = 1.2, b = 0.75), then path
+  - a query with no text lists matches by path
+- **Snippets:** up to 3 matching lines per result, each about 160 bytes with `…` where it's cut.
+- **Pages:** default 20 results, maximum 100. The cursor is an offset into the result list.
+- **Tag filter:** matches inline and frontmatter tags. A tag filter also matches nested tags.
+- **Property filter:** matches a scalar or any list item, ignoring case; deprecated keys are read as plural. An empty value only needs the property.
+- **Tag listing:** counts notes. A parent's count includes notes that have only a nested tag.
