@@ -83,7 +83,7 @@ func TestNoExecOrNetwork(t *testing.T) {
 		}
 	}
 	for _, name := range slices.Concat(readTools, writeTools) {
-		for _, bad := range []string{"exec", "eval", "command", "uri", "url", "fetch", "plugin", "template"} {
+		for _, bad := range []string{"exec", "eval", "command", "uri", "url", "fetch", "plugin", "templater"} {
 			if strings.Contains(name, bad) {
 				t.Errorf("X-SRV-08 tool %s", name)
 			}

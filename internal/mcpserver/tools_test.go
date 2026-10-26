@@ -21,12 +21,17 @@ var (
 		"read_note", "read_notes", // X-TOOL-02
 		"search", "list_tags", "find_by_property", // X-TOOL-03
 		"backlinks", "outgoing_links", "unresolved_links", "orphans", "resolve_link", // X-TOOL-04
-		"list_trash", // X-TOOL-07
+		"list_trash",     // X-TOOL-07
+		"list_templates", // X-TOOL-09
 	}
 	writeTools = []string{
 		"create_note", "edit_note", "replace_note", // X-TOOL-05
 		"set_properties", "remove_properties", // X-TOOL-06
 		"delete_note", "restore_from_trash", // X-TOOL-07
+		"move_note", "rename_note", "move_folder", "create_folder", // X-TOOL-08
+		"rename_heading", "rename_block", "rename_tag", "rename_property",
+		"open_daily_note", "append_to_daily_note", "create_from_template", // X-TOOL-09
+		"attach_file", "undo_last_write", // X-TOOL-10
 	}
 )
 
@@ -81,7 +86,7 @@ func TestToolList(t *testing.T) {
 			t.Errorf("%s has no description", name)
 		}
 	}
-	for _, name := range []string{"create_note", "restore_from_trash"} {
+	for _, name := range []string{"create_note", "restore_from_trash", "create_folder", "open_daily_note", "append_to_daily_note", "create_from_template", "attach_file"} {
 		if *full[name].Annotations.DestructiveHint {
 			t.Errorf("X-SRV-04 %s marked destructive", name)
 		}

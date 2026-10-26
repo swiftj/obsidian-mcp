@@ -82,6 +82,7 @@ func New(ctx context.Context, cfg *Config, log *slog.Logger, version string) (*S
 	s.addReadTools()
 	if !cfg.ReadOnly {
 		s.addWriteTools()
+		s.addOrganizeTools()
 	}
 	return s, nil
 }

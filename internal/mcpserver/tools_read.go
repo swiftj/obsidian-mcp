@@ -30,6 +30,7 @@ func (s *Server) addReadTools() {
 	addTool(s, "unresolved_links", "List links that point at no file, with source and line. Excluded files are skipped. Paged.", readOnly, unresolvedLinks)
 	addTool(s, "orphans", "List files that no other file links to. Excluded files are skipped. Paged.", readOnly, orphans)
 	addTool(s, "resolve_link", "Resolve a link the way Obsidian does, from the note it is written in. Shows every candidate when it is ambiguous.", readOnly, resolveLink)
+	addTool(s, "list_templates", "List the notes in the vault's template folder (Templates plugin setting).", readOnly, listTemplates)
 	addTool(s, "list_trash", "List the files in the vault's .trash folder, with the path restore_from_trash takes. Paged.", readOnly, listTrash)
 }
 

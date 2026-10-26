@@ -1,8 +1,11 @@
 package links
 
 import (
+	"context"
 	"path"
 	"strings"
+
+	"github.com/swiftj/obsidian-mcp/vault/ofm"
 )
 
 // Style is how a generated link is written.
@@ -72,4 +75,33 @@ func relPath(dir, to string) string {
 		return strings.Join(tos[i:], "/")
 	}
 	return strings.Repeat("../", ups) + strings.Join(tos[i:], "/")
+}
+
+// LinkTo writes the target of a new link from the note at from to the file
+// at to, in the vault's newLinkFormat, checked to resolve back to to. to
+// may be a file that doesn't exist yet, such as an attachment about to be
+// written.
+func (x *Index) LinkTo(ctx context.Context, from, to string, style Style) (string, error) {
+	cfg, err := x.v.Config(ctx)
+	if err != nil {
+		return "", err
+	}
+	x.mu.Lock()
+	defer x.mu.Unlock()
+	if err := x.refresh(ctx); err != nil {
+		return "", err
+	}
+	n := x.names
+	if len(n.byPath[strings.ToLower(to)]) == 0 {
+		n = newNames(append(x.sc.Paths(), to))
+	}
+	r := Ref{Link: ofm.Link{Markdown: style == Markdown}}
+	if style == Canvas {
+		r.Kind = KindCanvas
+	}
+	t, ok := newTarget(n, from, to, cfg.NewLinkFormat, r)
+	if !ok {
+		return "", &AmbiguousError{Target: to, Candidates: []string{to}}
+	}
+	return t, nil
 }
