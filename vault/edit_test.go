@@ -219,3 +219,26 @@ func TestVaultProperties(t *testing.T) {
 		t.Errorf("P-TYPE-01 missing types.json = %v, %v", ty, err)
 	}
 }
+
+func TestFindSectionAndBlock(t *testing.T) {
+	// X-TOOL-02: read_note targets match edit_note's.
+	src := []byte(editDoc)
+	s, err := FindSection(src, "beta#beta child")
+	if err != nil || string(src[s.Start:s.End]) != "### Beta Child\n\nchild\n\n" {
+		t.Errorf("FindSection = %q, %v", src[s.Start:s.End], err)
+	}
+	if _, err := FindSection(src, "Alpha"); !errors.As(err, new(*EditError)) {
+		t.Errorf("ambiguous section: %v", err)
+	}
+	b, err := FindBlock(src, "^list-id")
+	if err != nil || string(src[b.Start:b.End]) != "- item\n- item 2\n\n^list-id" {
+		t.Errorf("FindBlock list = %q, %v", src[b.Start:b.End], err)
+	}
+	b, err = FindBlock(src, "beta-id")
+	if err != nil || string(src[b.Start:b.End]) != "Beta body ^beta-id" {
+		t.Errorf("FindBlock para = %q, %v", src[b.Start:b.End], err)
+	}
+	if _, err := FindBlock(src, "nope"); !errors.As(err, new(*EditError)) {
+		t.Errorf("missing block: %v", err)
+	}
+}

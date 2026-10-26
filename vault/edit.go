@@ -135,31 +135,60 @@ func applyEdit(src []byte, op EditOp) ([]byte, ofm.Span, error) {
 		repl := bytes.ReplaceAll(src[first:last], []byte(find), []byte(text))
 		return patch(src, ofm.Span{Start: first, End: last}, string(repl))
 	case EditReplaceBlock:
-		id := strings.TrimPrefix(strings.TrimSpace(op.Block), "^")
-		var hits []ofm.BlockID
-		for _, b := range d.BlockIDs {
-			if strings.EqualFold(b.ID, id) {
-				hits = append(hits, b)
-			}
+		h, err := findBlock(d, op.Kind, op.Block)
+		if err != nil {
+			return nil, ofm.Span{}, err
 		}
-		switch len(hits) {
-		case 0:
-			return nil, ofm.Span{}, &EditError{Op: op.Kind, Target: "^" + id, Reason: "no block has this ID"}
-		case 1:
-		default:
-			var c []string
-			for _, h := range hits {
-				c = append(c, fmt.Sprintf("^%s (line %d)", h.ID, lineOf(src, h.Start)))
-			}
-			return nil, ofm.Span{}, &EditError{Op: op.Kind, Target: "^" + id, Reason: "more than one block has this ID", Candidates: c}
-		}
-		h := hits[0]
 		if h.Start >= h.Block.Start && h.End <= h.Block.End { // the ID is inside the block: keep it
 			return patch(src, h.Block, strings.TrimRight(text, "\r\n")+" ^"+h.ID)
 		}
 		return patch(src, h.Block, strings.TrimRight(text, "\r\n"))
 	}
 	return nil, ofm.Span{}, &EditError{Op: op.Kind, Reason: "unknown edit operation"}
+}
+
+// FindSection returns the span of the section under heading, a heading
+// path such as "H1#Sub", heading line included. A missing or ambiguous
+// heading is an *EditError with the candidates.
+func FindSection(src []byte, heading string) (ofm.Span, error) {
+	d := ofm.Parse(src)
+	sec, err := findSection(d, EditOp{Kind: "read_section", Heading: heading})
+	if err != nil {
+		return ofm.Span{}, err
+	}
+	return sec.Span, nil
+}
+
+// FindBlock returns the span of the block labelled ^id, including the ID
+// when it is on a line of its own. A missing or duplicated ID is an
+// *EditError.
+func FindBlock(src []byte, id string) (ofm.Span, error) {
+	b, err := findBlock(ofm.Parse(src), "read_block", id)
+	if err != nil {
+		return ofm.Span{}, err
+	}
+	return ofm.Span{Start: min(b.Block.Start, b.Start), End: max(b.Block.End, b.End)}, nil
+}
+
+func findBlock(d *ofm.Doc, kind EditKind, block string) (ofm.BlockID, error) {
+	id := strings.TrimPrefix(strings.TrimSpace(block), "^")
+	var hits []ofm.BlockID
+	for _, b := range d.BlockIDs {
+		if strings.EqualFold(b.ID, id) {
+			hits = append(hits, b)
+		}
+	}
+	switch len(hits) {
+	case 0:
+		return ofm.BlockID{}, &EditError{Op: kind, Target: "^" + id, Reason: "no block has this ID"}
+	case 1:
+		return hits[0], nil
+	}
+	var c []string
+	for _, h := range hits {
+		c = append(c, fmt.Sprintf("^%s (line %d)", h.ID, lineOf(d.Src, h.Start)))
+	}
+	return ofm.BlockID{}, &EditError{Op: kind, Target: "^" + id, Reason: "more than one block has this ID", Candidates: c}
 }
 
 func patch(src []byte, s ofm.Span, text string) ([]byte, ofm.Span, error) {
