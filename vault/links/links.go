@@ -38,6 +38,8 @@ type Ref struct {
 	// is ambiguous, Resolved is "" and Candidates lists the matches.
 	Resolved   string
 	Candidates []string
+
+	raw string // KindFrontmatter: the link as written in the value
 }
 
 // Unresolved reports whether the link points at no file.
@@ -122,7 +124,7 @@ func extract(f *scan.File) []Ref {
 	var refs []Ref
 	if f.Doc != nil {
 		for _, l := range f.Props.Links {
-			refs = append(refs, Ref{Source: f.Path, Line: l.Line, Kind: KindFrontmatter, Property: l.Path, Link: l.Link})
+			refs = append(refs, Ref{Source: f.Path, Line: l.Line, Kind: KindFrontmatter, Property: l.Path, Link: l.Link, raw: l.Text})
 		}
 		starts := lineStarts(f.Doc.Src)
 		for _, l := range f.Doc.Links {
@@ -233,11 +235,19 @@ func (x *Index) Orphans(ctx context.Context) ([]string, error) {
 // file refreshes the index and returns the indexed path of p, matched
 // ignoring case. The caller holds x.mu.
 func (x *Index) file(ctx context.Context, p string) (string, error) {
-	c, err := vault.Clean(p)
-	if err != nil {
+	if _, err := vault.Clean(p); err != nil {
 		return "", err
 	}
 	if err := x.refresh(ctx); err != nil {
+		return "", err
+	}
+	return x.fileLocked(p)
+}
+
+// fileLocked is file without the refresh.
+func (x *Index) fileLocked(p string) (string, error) {
+	c, err := vault.Clean(p)
+	if err != nil {
 		return "", err
 	}
 	if _, ok := x.sc.Files()[c]; ok {

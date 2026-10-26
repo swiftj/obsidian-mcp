@@ -126,25 +126,37 @@ func (s *Scanner) load(ctx context.Context, f *File) bool {
 		s.log.Debug("scan: skipping unreadable file", "path", f.Path, "err", err)
 		return false
 	}
-	if f.Kind == vault.KindCanvas {
+	parse(f, r.Data)
+	return true
+}
+
+// Parse returns the parsed form of a note or canvas's bytes, the same way a
+// refresh parses it. Other kinds get no content.
+func Parse(p string, data []byte) *File {
+	f := &File{Path: p, Kind: vault.KindOf(p)}
+	parse(f, data)
+	return f
+}
+
+func parse(f *File, data []byte) {
+	switch f.Kind {
+	case vault.KindMarkdown:
+		f.Doc = ofm.Parse(data)
+		f.Props = props.Read(f.Doc)
+	case vault.KindCanvas:
 		var c struct {
 			Nodes []struct {
 				Type string `json:"type"`
 				CanvasFile
 			} `json:"nodes"`
 		}
-		if err := json.Unmarshal(r.Data, &c); err != nil {
-			s.log.Debug("scan: skipping invalid canvas", "path", f.Path, "err", err)
-			return true
+		if json.Unmarshal(data, &c) != nil {
+			return // an invalid canvas has no links
 		}
 		for _, n := range c.Nodes {
 			if n.Type == "file" && n.File != "" {
 				f.Canvas = append(f.Canvas, n.CanvasFile)
 			}
 		}
-		return true
 	}
-	f.Doc = ofm.Parse(r.Data)
-	f.Props = props.Read(f.Doc)
-	return true
 }
