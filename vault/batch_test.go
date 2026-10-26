@@ -237,3 +237,49 @@ func TestCreateFolderAndAttachment(t *testing.T) {
 		t.Errorf("undone attachment not in trash: %v", err)
 	}
 }
+
+func TestPlanVaultRenames(t *testing.T) {
+	// P-REN-01, P-TAGREN-01
+	ctx := context.Background()
+	v, dir := openJournaled(t)
+	for rel, content := range map[string]string{
+		"T1.md": "---\ntags: [proj]\nstatus: a\n---\n#proj/x\n",
+		"T2.md": "#Proj here\n",
+		"T3.md": "---\nstatus: b\nstate: taken\n---\n",
+		"T4.md": "---\nstatus: [unclosed\n---\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, rel), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p, err := v.PlanRenameTag(ctx, "proj", "work")
+	if err != nil || len(p.Changes) != 2 {
+		t.Fatalf("P-TAGREN-01 plan = %+v, %v", p, err)
+	}
+	if _, err := v.Apply(ctx, p.Changes, WriteOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got := string(mustRead(t, v, "T1.md").Data); got != "---\ntags: [work]\nstatus: a\n---\n#work/x\n" {
+		t.Errorf("P-TAGREN-01 T1 = %q", got)
+	}
+	if got := string(mustRead(t, v, "T2.md").Data); got != "#work here\n" {
+		t.Errorf("P-TAGREN-01 T2 = %q", got)
+	}
+	if _, err := v.PlanRenameTag(ctx, "work", "two words"); err == nil {
+		t.Error("P-TAGREN-01 bad tag accepted")
+	}
+	p, err = v.PlanRenameProperty(ctx, "status", "state")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Changes) != 1 || p.Files[0].Path != "T1.md" || len(p.Skipped) != 2 {
+		t.Errorf("P-REN-01 plan = %+v", p)
+	}
+	skipped := map[string]bool{}
+	for _, s := range p.Skipped {
+		skipped[s.Path] = true
+	}
+	if !skipped["T3.md"] || !skipped["T4.md"] {
+		t.Errorf("P-REN-01 skipped = %+v", p.Skipped)
+	}
+}

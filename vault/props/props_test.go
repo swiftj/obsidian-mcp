@@ -320,3 +320,28 @@ func FuzzPatch(f *testing.F) {
 		}
 	})
 }
+
+func TestRenameTag(t *testing.T) {
+	// P-TAGREN-01
+	src := "---\ntags:\n  - Proj\n  - proj/Sub\n  - other\n# keep\nx: 1\n---\n# Head #proj\n\nText #PROJ/deep/er and #project and `#proj` %% #proj %%\n\n```\n#proj\n```\n"
+	out, n, err := RenameTag([]byte(src), "#proj", "work/main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "---\ntags:\n  - work/main\n  - work/main/Sub\n  - other\n# keep\nx: 1\n---\n# Head #work/main\n\nText #work/main/deep/er and #project and `#proj` %% #proj %%\n\n```\n#proj\n```\n"
+	if string(out) != want || n != 4 {
+		t.Errorf("P-TAGREN-01 = %d\n%s\nwant\n%s", n, out, want)
+	}
+	// A one-word scalar becomes a list, the form Obsidian writes for tags.
+	if out, n, err := RenameTag([]byte("---\ntags: proj\n---\n"), "proj", "w"); err != nil || n != 1 || string(out) != "---\ntags:\n  - w\n---\n" {
+		t.Errorf("P-TAGREN-01 scalar = %q %d %v", out, n, err)
+	}
+	if out, n, _ := RenameTag([]byte("no tags\n"), "proj", "w"); n != 0 || string(out) != "no tags\n" {
+		t.Errorf("P-TAGREN-01 no tags = %q", out)
+	}
+	for _, bad := range []string{"", "two words", "123", "a#b"} {
+		if _, _, err := RenameTag([]byte("#proj\n"), "proj", bad); err == nil {
+			t.Errorf("P-TAGREN-01 new tag %q accepted", bad)
+		}
+	}
+}
