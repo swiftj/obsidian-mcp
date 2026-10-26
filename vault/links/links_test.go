@@ -3,9 +3,11 @@ package links
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -240,4 +242,35 @@ func TestIncremental(t *testing.T) {
 	if got := resolveOutgoing(t, x, "A/src.md"); !slices.Equal(got, []string{""}) {
 		t.Errorf("after delete = %q", got)
 	}
+}
+
+func TestLargeVault(t *testing.T) {
+	// V-SRCH-06: 10k made-up notes index inside the call timeout.
+	if testing.Short() {
+		t.Skip("large vault")
+	}
+	dir := t.TempDir()
+	for i := range 10000 {
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "# Note %d\n\n", i)
+		for j := range 20 {
+			fmt.Fprintf(&sb, "Line %d links [[Note %d]] and [[F%02d/Note %d#H]].\n", j, (i+j+1)%10000, (i+j)%100, (i*3+j)%10000)
+		}
+		write(t, dir, fmt.Sprintf("F%02d/Note %d.md", i%100, i), sb.String())
+	}
+	x := openIndex(t, dir)
+	start := time.Now()
+	back, err := x.Backlinks(context.Background(), "F05/Note 5.md")
+	took := time.Since(start)
+	if err != nil || len(back) == 0 {
+		t.Fatalf("V-SRCH-06 backlinks = %d, %v", len(back), err)
+	}
+	if took > 30*time.Second {
+		t.Errorf("V-SRCH-06 first build took %v", took)
+	}
+	start = time.Now()
+	if _, err := x.Orphans(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("10k notes: build+query %v, warm query %v", took, time.Since(start))
 }
