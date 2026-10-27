@@ -402,3 +402,37 @@ The dependency is added in Phase 2, not before.
 - **Writing:** `Vault.CreateAttachment` is the only way to write these kinds.
 - **The returned embed:** `![[target]]`, or `![](target)` with `useMarkdownLinks`, in `newLinkFormat`.
 - **Undo:** an attachment is journaled as a create, so undo moves it to `.trash`.
+
+## D-013 Phase 6 choices: Canvas and Bases (2026-10-26)
+
+**Spec change** (owner-approved with the Phase 6 plan)
+- **X-TOOL-11** gains `create_canvas`, matching `create_base`. `create_note` writes only `.md`, so without it there was no way to make a new canvas.
+
+**Canvas edits [policy]** (C-NODE-02, C-COL-01, C-PRES-01, C-EDIT-01)
+- **Colours:** a preset `"1"` to `"6"`, or `#RRGGBB`. The spec shows only a six-digit hex example, so `#RGB` and names are refused.
+- **Integers:** `x`, `y`, `width` and `height` must be integer literals; `1.0` is a problem.
+- **Generated IDs:** 16 random lowercase hex digits, unique across nodes and edges.
+- **Bytes:** a JSON span parser keeps each node's and edge's byte range.
+  - Untouched elements keep their bytes. An updated element has only its changed values patched; new keys go at its end, and removed keys take one separator with them.
+  - New elements are appended (z-order, C-ORD-01). They copy the layout of the array's last element, or the other array's, or are written on one line.
+  - New keys follow the spec's field order. A new canvas is tab-indented, with one node or edge per line, and has no final newline.
+- **Strings:** written without HTML escaping. Text that isn't valid UTF-8 is refused.
+- **File nodes:** `file` and `background` paths must pass the vault path checks.
+- **Problems already in a file** don't block an edit; only problems an edit introduces do. The rest are reported, so a canvas with plugin extras can still be edited.
+- **Link index:** the link rewriter and the scanner now use the same canvas parser.
+
+**Bases [policy]** (B-SCH-01..B-VIEW-01, B-EDIT-01, B-EMB-01)
+- **Expressions:** filter statements and formulas are never parsed or evaluated (B-NOQ-01); only their YAML shape is checked.
+- **Unknown keys** are allowed at every level: views and plugins may add them.
+- **Warnings don't block.** A `formula.x` property ID naming no formula is a warning: the docs don't say such a base is invalid, and an edit may add the formula later.
+- **View summaries** must name a default summary from the docs table or a top-level `summaries` entry.
+- **View names** must be unique, so a name can address a view in an edit path.
+- **Code blocks:** a ```` ```base ```` block is validated like a file. Blocks inside quotes or lists are skipped.
+
+**YAML edits (`internal/yamledit`) [policy]**
+- **Unit of change:** one entry, a key with its value or a list item. Its range runs from the start of its line to the next line at its indentation or less; trailing blank and comment lines stay outside.
+- **Fallbacks:** when the entry isn't alone at the start of its line (the first key after a list dash), or its parent is in flow style (`[a, b]`), the nearest entry above that is rewritten instead. With none, the whole document is rewritten.
+- **Writing:** entries are written in block style at their column, with the file's indent unit and line endings. Flow style inside a rewritten entry is kept. Comments inside a rewritten entry are lost; every other byte stays.
+- **New keys:** values arrive as JSON objects, whose key order is lost in transit. New mappings use the docs' key order (`type`, `name`, `limit`, `groupBy`, …), then the rest sorted.
+- **Self-check:** every result is parsed again and must equal the edited tree exactly, or nothing is written.
+- **The `props` package is unchanged.**

@@ -218,7 +218,7 @@ Each requirement is a single line:
 - **X-TOOL-08** `p5` Organise tools: `move_note`, `rename_note`, `create_folder`, `move_folder`, `rename_tag`, `rename_property`, `rename_heading`, `rename_block`. ⟨CLAUDE.md §Tools; D-012⟩
 - **X-TOOL-09** `p5` Daily-note and template tools: `open_daily_note`, `append_to_daily_note`, `list_templates`, `create_from_template`. ⟨CLAUDE.md §Tools⟩
 - **X-TOOL-10** `p5` `attach_file` and `undo_last_write`. ⟨CLAUDE.md §Tools⟩
-- **X-TOOL-11** `p6` Canvas and Bases tools: `read_canvas`, `edit_canvas`, `read_base`, `create_base`, `edit_base`. ⟨CLAUDE.md §Tools⟩
+- **X-TOOL-11** `p6` Canvas and Bases tools: `read_canvas`, `edit_canvas`, `create_canvas`, `read_base`, `create_base`, `edit_base` (D-013). ⟨CLAUDE.md §Tools⟩
 
 ## X-PLUG: Packaging
 
