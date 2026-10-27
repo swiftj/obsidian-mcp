@@ -21,8 +21,9 @@ var (
 		"read_note", "read_notes", // X-TOOL-02
 		"search", "list_tags", "find_by_property", // X-TOOL-03
 		"backlinks", "outgoing_links", "unresolved_links", "orphans", "resolve_link", // X-TOOL-04
-		"list_trash",     // X-TOOL-07
-		"list_templates", // X-TOOL-09
+		"list_trash",               // X-TOOL-07
+		"list_templates",           // X-TOOL-09
+		"read_canvas", "read_base", // X-TOOL-11
 	}
 	writeTools = []string{
 		"create_note", "edit_note", "replace_note", // X-TOOL-05
@@ -32,6 +33,7 @@ var (
 		"rename_heading", "rename_block", "rename_tag", "rename_property",
 		"open_daily_note", "append_to_daily_note", "create_from_template", // X-TOOL-09
 		"attach_file", "undo_last_write", // X-TOOL-10
+		"edit_canvas", "create_canvas", "create_base", "edit_base", // X-TOOL-11
 	}
 )
 
@@ -59,7 +61,7 @@ func schemaProps(t *testing.T, tl *mcp.Tool) map[string]any {
 }
 
 func TestToolList(t *testing.T) {
-	// X-SRV-03, X-SRV-04, X-SRV-05, X-SRV-09, X-TOOL-01..07
+	// X-SRV-03, X-SRV-04, X-SRV-05, X-SRV-09, X-TOOL-01..07, X-TOOL-11, B-NOQ-01
 	full := listTools(t, start(t, false))
 	want := slices.Concat(readTools, writeTools)
 	if got := slices.Sorted(maps.Keys(full)); !slices.Equal(got, slices.Sorted(slices.Values(want))) {
@@ -86,7 +88,12 @@ func TestToolList(t *testing.T) {
 			t.Errorf("%s has no description", name)
 		}
 	}
-	for _, name := range []string{"create_note", "restore_from_trash", "create_folder", "open_daily_note", "append_to_daily_note", "create_from_template", "attach_file"} {
+	for name := range full {
+		if strings.Contains(name, "query") { // B-NOQ-01
+			t.Errorf("B-NOQ-01 query tool %s is registered", name)
+		}
+	}
+	for _, name := range []string{"create_note", "restore_from_trash", "create_folder", "open_daily_note", "append_to_daily_note", "create_from_template", "attach_file", "create_canvas", "create_base"} {
 		if *full[name].Annotations.DestructiveHint {
 			t.Errorf("X-SRV-04 %s marked destructive", name)
 		}

@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/swiftj/obsidian-mcp/vault"
+	"github.com/swiftj/obsidian-mcp/vault/bases"
+	"github.com/swiftj/obsidian-mcp/vault/canvas"
 	"github.com/swiftj/obsidian-mcp/vault/links"
 	"github.com/swiftj/obsidian-mcp/vault/props"
 )
@@ -20,6 +22,8 @@ func toolError(err error) error {
 		ambig    *links.AmbiguousError
 		editErr  *vault.EditError
 		propErr  *props.Error
+		canvErr  *canvas.Error
+		baseErr  *bases.Error
 	)
 	hint := ""
 	switch {
@@ -45,6 +49,10 @@ func toolError(err error) error {
 		}
 	case errors.As(err, &propErr):
 		hint = propErr.Hint
+	case errors.As(err, &canvErr):
+		hint = "fix what is listed and retry; read_canvas shows the nodes, edges and their IDs"
+	case errors.As(err, &baseErr):
+		hint = "fix what is listed and retry; read_base shows the views and the YAML. Paths look like [\"views\", \"My table\", \"limit\"]"
 	}
 	if hint == "" {
 		return err

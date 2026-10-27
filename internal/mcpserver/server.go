@@ -24,6 +24,7 @@ Safety:
 - Every read returns an etag. Every change to an existing file needs the etag of your latest read; if the note changed, read it again.
 - Prefer small edits (edit_note, set_properties) over replace_note, and use dry_run to preview a diff before writing when unsure.
 - delete_note moves files to the vault's .trash folder; restore_from_trash brings them back.
+- Canvases (.canvas) and bases (.base) have their own tools: read_canvas, edit_canvas, read_base, edit_base. Bases are edited and checked, never queried.
 
 Paths are relative to the vault root, use "/" and include the extension (Notes/Idea.md). Tools take an optional vault name from list_vaults; the first vault is the default.`
 
@@ -80,6 +81,7 @@ func New(ctx context.Context, cfg *Config, log *slog.Logger, version string) (*S
 	s.mcp = mcp.NewServer(&mcp.Implementation{Name: "obs-mcp", Version: version}, &mcp.ServerOptions{Instructions: Instructions})
 	s.mcp.AddReceivingMiddleware(s.logCalls)
 	s.addReadTools()
+	s.addCanvasTools()
 	if !cfg.ReadOnly {
 		s.addWriteTools()
 		s.addOrganizeTools()

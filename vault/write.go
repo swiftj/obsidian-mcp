@@ -113,6 +113,13 @@ func (v *Vault) Replace(ctx context.Context, p string, data []byte, etag string,
 	return v.replace(ctx, p, etag, o, func(cur []byte) ([]byte, error) { return MatchStyle(cur, data), nil })
 }
 
+// Update changes the existing file at p to change(current bytes), checked
+// against etag and written like Replace. change runs under the write lock
+// and its result is written as is; canvas and base edits use it.
+func (v *Vault) Update(ctx context.Context, p, etag string, change func(cur []byte) ([]byte, error), o WriteOptions) (*Result, error) {
+	return v.replace(ctx, p, etag, o, change)
+}
+
 // replace changes the existing file at p to change(current bytes), with
 // the etag check, journal, atomic write and dry run of Replace. change runs
 // under the write lock, on the bytes the etag was checked against.
