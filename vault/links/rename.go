@@ -3,7 +3,6 @@ package links
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"path"
 	"regexp"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/swiftj/obsidian-mcp/internal/scan"
 	"github.com/swiftj/obsidian-mcp/vault"
+	"github.com/swiftj/obsidian-mcp/vault/canvas"
 	"github.com/swiftj/obsidian-mcp/vault/ofm"
 )
 
@@ -253,9 +253,9 @@ func patchFileWith(p string, src []byte, edits []fileEdit, extra []edit) (out []
 		return src, nil, nil, true
 	}
 	all := slices.Clone(extra)
-	var nodes []canvasNode
+	var cv *canvas.Canvas
 	if vault.KindOf(p) == vault.KindCanvas {
-		nodes = canvasNodes(src)
+		cv, _ = canvas.Parse(src)
 	}
 	used := map[string]int{} // frontmatter: occurrences claimed per line and text
 	for _, fe := range edits {
@@ -273,7 +273,7 @@ func patchFileWith(p string, src []byte, edits []fileEdit, extra []edit) (out []
 		case KindFrontmatter:
 			old, at, es, err = frontmatterEdits(src, r, fe, used)
 		case KindCanvas:
-			es, err = canvasEdits(nodes, r, fe)
+			es, err = canvasEdits(cv, r, fe)
 		}
 		if err != nil {
 			skips = append(skips, Skip{Source: p, Line: r.Line, Link: linkString(r), Reason: err.Error()})
@@ -349,139 +349,28 @@ func frontmatterEdits(src []byte, r Ref, fe fileEdit, used map[string]int) (stri
 	return r.raw, at, linkEdits(r.Link, fe, at-r.Link.Start), nil
 }
 
-// canvasNode is one node's "file" and "subpath" value positions.
-type canvasNode struct {
-	id            string
-	file, subpath [2]int // byte range of the JSON string token, or {-1,-1}
-}
-
 var errNoNode = fmt.Errorf("the canvas node was not found")
 
 // canvasEdits returns the edits for a canvas file node.
-func canvasEdits(nodes []canvasNode, r Ref, fe fileEdit) ([]edit, error) {
-	for _, n := range nodes {
-		if n.id != r.Node {
+func canvasEdits(c *canvas.Canvas, r Ref, fe fileEdit) ([]edit, error) {
+	if c == nil {
+		return nil, errNoNode
+	}
+	var es []edit
+	for _, f := range []struct {
+		key string
+		to  *string
+	}{{"file", fe.target}, {"subpath", fe.subpath}} {
+		if f.to == nil {
 			continue
 		}
-		var es []edit
-		if fe.target != nil {
-			if n.file[0] < 0 {
-				return nil, errNoNode
-			}
-			es = append(es, edit{n.file[0], n.file[1], jsonString(*fe.target)})
-		}
-		if fe.subpath != nil {
-			if n.subpath[0] < 0 {
-				return nil, errNoNode
-			}
-			es = append(es, edit{n.subpath[0], n.subpath[1], jsonString(*fe.subpath)})
-		}
-		return es, nil
-	}
-	return nil, errNoNode
-}
-
-func jsonString(s string) string {
-	var b bytes.Buffer
-	enc := json.NewEncoder(&b)
-	enc.SetEscapeHTML(false)
-	_ = enc.Encode(s)
-	return strings.TrimSuffix(b.String(), "\n")
-}
-
-// canvasNodes walks a canvas's JSON tokens and records where each node's
-// "id", "file" and "subpath" strings are.
-func canvasNodes(src []byte) []canvasNode {
-	dec := json.NewDecoder(bytes.NewReader(src))
-	var out []canvasNode
-	tok := func() (json.Token, int, bool) {
-		t, err := dec.Token()
-		return t, int(dec.InputOffset()), err == nil
-	}
-	skip := func(t json.Token) bool { // skip a value whose first token is t
-		d, ok := t.(json.Delim)
-		if !ok || (d != '{' && d != '[') {
-			return true
-		}
-		for depth := 1; depth > 0; {
-			t, _, ok := tok()
-			if !ok {
-				return false
-			}
-			if d, isD := t.(json.Delim); isD {
-				if d == '{' || d == '[' {
-					depth++
-				} else {
-					depth--
-				}
-			}
-		}
-		return true
-	}
-	if t, _, ok := tok(); !ok || t != json.Delim('{') {
-		return nil
-	}
-	for dec.More() {
-		k, _, ok := tok()
+		s, e, ok := c.StringSpan(r.Node, f.key)
 		if !ok {
-			return out
+			return nil, errNoNode
 		}
-		v, _, ok := tok()
-		if !ok {
-			return out
-		}
-		if k != "nodes" || v != json.Delim('[') {
-			if !skip(v) {
-				return out
-			}
-			continue
-		}
-		for dec.More() {
-			t, _, ok := tok()
-			if !ok || t != json.Delim('{') {
-				if !ok || !skip(t) {
-					return out
-				}
-				continue
-			}
-			n := canvasNode{file: [2]int{-1, -1}, subpath: [2]int{-1, -1}}
-			for dec.More() {
-				k, kend, ok := tok()
-				if !ok {
-					return out
-				}
-				v, vend, ok := tok()
-				if !ok {
-					return out
-				}
-				s, isStr := v.(string)
-				if !isStr {
-					if !skip(v) {
-						return out
-					}
-					continue
-				}
-				q := kend + bytes.IndexByte(src[kend:], ':')
-				q += bytes.IndexByte(src[q:], '"')
-				switch k {
-				case "id":
-					n.id = s
-				case "file":
-					n.file = [2]int{q, vend}
-				case "subpath":
-					n.subpath = [2]int{q, vend}
-				}
-			}
-			if _, _, ok := tok(); !ok { // "}"
-				return out
-			}
-			out = append(out, n)
-		}
-		if _, _, ok := tok(); !ok { // "]"
-			return out
-		}
+		es = append(es, edit{s, e, canvas.Quote(*f.to)})
 	}
-	return out
+	return es, nil
 }
 
 func applyEdits(src []byte, es []edit) []byte {

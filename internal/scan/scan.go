@@ -5,13 +5,13 @@ package scan
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"maps"
 	"slices"
 	"time"
 
 	"github.com/swiftj/obsidian-mcp/vault"
+	"github.com/swiftj/obsidian-mcp/vault/canvas"
 	"github.com/swiftj/obsidian-mcp/vault/ofm"
 	"github.com/swiftj/obsidian-mcp/vault/props"
 )
@@ -28,12 +28,11 @@ type File struct {
 	Canvas  []CanvasFile
 }
 
-// CanvasFile is a canvas "file" node. Full Canvas validation is in Phase 6;
-// only these fields are decoded.
+// CanvasFile is a canvas "file" node.
 type CanvasFile struct {
-	ID      string `json:"id"`
-	File    string `json:"file"`
-	Subpath string `json:"subpath"`
+	ID      string
+	File    string
+	Subpath string
 }
 
 // Changes says what a Refresh found.
@@ -144,18 +143,13 @@ func parse(f *File, data []byte) {
 		f.Doc = ofm.Parse(data)
 		f.Props = props.Read(f.Doc)
 	case vault.KindCanvas:
-		var c struct {
-			Nodes []struct {
-				Type string `json:"type"`
-				CanvasFile
-			} `json:"nodes"`
-		}
-		if json.Unmarshal(data, &c) != nil {
+		c, err := canvas.Parse(data)
+		if err != nil {
 			return // an invalid canvas has no links
 		}
-		for _, n := range c.Nodes {
+		for _, n := range c.Nodes() {
 			if n.Type == "file" && n.File != "" {
-				f.Canvas = append(f.Canvas, n.CanvasFile)
+				f.Canvas = append(f.Canvas, CanvasFile{ID: n.ID, File: n.File, Subpath: n.Subpath})
 			}
 		}
 	}
