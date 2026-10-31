@@ -80,6 +80,7 @@ Each requirement is a single line:
 - **V-TRASH-01** `p1` Delete moves the file to `<vault>/.trash/<same relative path>`. On a name collision a suffix is added. ⟨CLAUDE.md §2; settings.md §Deleted files⟩
 - **V-TRASH-02** `p1` Restore moves a trashed file back to its original path. It fails with a clear error if that path is now occupied. ⟨CLAUDE.md §2⟩
 - **V-TRASH-03** `p1` Trash entries can be listed with their original paths. ⟨CLAUDE.md §Tools⟩
+- **V-TRASH-04** `p7` Delete, restore and their undo work for every visible file kind, attachments included. Content writes stay limited by V-PATH-10. ⟨CLAUDE.md §Tools: `delete_note`⟩ (D-015)
 - **V-JRN-01** `p1` The journal is on by default. It keeps the previous bytes of every overwrite, move and delete in `~/.local/state/obs-mcp/journal`, outside the vault. `OBS_MCP_JOURNAL` can turn it off or set the path. ⟨CLAUDE.md §2; DECISIONS D-001⟩
 - **V-JRN-02** `p1` The journal is capped at 500 MB by default, and the oldest entries are pruned first. ⟨DECISIONS D-001⟩
 - **V-JRN-03** `p5` Undo restores the state from before the last journaled write. Its dry run shows the diff. Undo itself goes through the etag check. ⟨CLAUDE.md §Tools⟩

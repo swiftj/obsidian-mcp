@@ -95,3 +95,46 @@ func TestOriginalPath(t *testing.T) {
 		}
 	}
 }
+
+func TestTrashAttachments(t *testing.T) {
+	// V-TRASH-04: every visible file kind can be trashed and restored.
+	ctx := context.Background()
+	v, dir := openJournaled(t)
+	audio := []byte("ID3\x03\x00\xff\xfe binary audio")
+	if err := os.MkdirAll(filepath.Join(dir, "Media"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "Media", "clip.mp3"), audio, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"img.png", "Media/clip.mp3", "Doc.pdf"} {
+		f := mustRead(t, v, p)
+		res, err := v.Trash(ctx, p, f.ETag, WriteOptions{})
+		if err != nil || res.Path != ".trash/"+p {
+			t.Fatalf("V-TRASH-04 trash %s = %+v, %v", p, res, err)
+		}
+		if _, err := v.Restore(ctx, p, "", WriteOptions{}); err != nil {
+			t.Fatalf("V-TRASH-04 restore %s: %v", p, err)
+		}
+		if g := mustRead(t, v, p); g.ETag != f.ETag {
+			t.Errorf("V-TRASH-04 %s changed in the round trip", p)
+		}
+	}
+	f := mustRead(t, v, "Media/clip.mp3")
+	if _, err := v.Trash(ctx, "Media/clip.mp3", f.ETag, WriteOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v.Undo(ctx, WriteOptions{}); err != nil {
+		t.Fatalf("V-TRASH-04 undo trash: %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "Media", "clip.mp3")); string(b) != string(audio) {
+		t.Errorf("V-TRASH-04 undo restored %q", b)
+	}
+	var pe *PathError
+	if _, err := v.Trash(ctx, ".obsidian/app.json", "x", WriteOptions{}); !errors.As(err, &pe) {
+		t.Errorf("V-TRASH-04 trash in the config folder = %v", err)
+	}
+	if _, err := v.Trash(ctx, "", "x", WriteOptions{}); !errors.As(err, &pe) {
+		t.Errorf("V-TRASH-04 trash the vault root = %v", err)
+	}
+}

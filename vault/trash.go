@@ -42,7 +42,7 @@ func (v *Vault) Trash(ctx context.Context, p, etag string, o WriteOptions) (*Res
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	rel, err := v.resolve("trash", p, accessWrite)
+	rel, err := v.resolve("trash", p, accessFile)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (v *Vault) Restore(ctx context.Context, trashPath, to string, o WriteOption
 	if to == "" {
 		to = originalPath(trel)
 	}
-	dst, err := v.resolve("restore", to, accessWrite)
+	dst, err := v.resolve("restore", to, accessFile)
 	if err != nil {
 		return nil, err
 	}

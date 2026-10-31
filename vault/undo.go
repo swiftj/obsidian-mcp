@@ -58,7 +58,7 @@ func (v *Vault) Undo(ctx context.Context, o WriteOptions) (*UndoResult, error) {
 		}
 		changes = append(changes, c)
 	}
-	res, err := v.apply(ctx, changes, o, applyOpts{allowTrash: true})
+	res, err := v.apply(ctx, changes, o, applyOpts{allowTrash: true, allowAttachments: true})
 	if err != nil {
 		return nil, err
 	}

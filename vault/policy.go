@@ -15,8 +15,9 @@ const trashDir = ".trash"
 type access int
 
 const (
-	accessRead access = iota
-	accessWrite
+	accessRead  access = iota
+	accessWrite        // change content: .md, .canvas and .base only
+	accessFile         // move a whole file of any visible kind, such as into .trash
 )
 
 // policy decides which clean paths an operation may touch.
@@ -57,7 +58,7 @@ func newPolicy(configDir string, deny []string) (*policy, error) {
 // not write. The vault root ("") is always readable.
 func (p *policy) check(op string, rel string, a access) error {
 	if rel == "" {
-		if a == accessWrite {
+		if a != accessRead {
 			return &PathError{Op: op, Path: rel, Reason: "the vault root is not a file"}
 		}
 		return nil

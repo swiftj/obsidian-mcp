@@ -73,6 +73,15 @@ func (v *Vault) Apply(ctx context.Context, changes []Change, o WriteOptions) (*B
 type applyOpts struct {
 	journal    bool // record the steps for undo
 	allowTrash bool // undo may move files into and out of .trash
+	// allowAttachments lets undo write back the journaled bytes of an
+	// image, audio, video or PDF file. No tool sets it (D-015).
+	allowAttachments bool
+}
+
+// binary reports whether a change may write non-text bytes to p: only undo,
+// and only for attachment kinds.
+func (ao applyOpts) binary(p string) bool {
+	return ao.allowAttachments && attachmentKinds[KindOf(p)]
 }
 
 // step is a planned, checked change.
@@ -200,7 +209,11 @@ func (v *Vault) planSteps(changes []Change, ao applyOpts) ([]*step, error) {
 		var err error
 		switch c.Kind {
 		case ChangeWrite, ChangeCreate:
-			if s.from, err = v.resolve(string(c.Kind), c.Path, accessWrite); err != nil {
+			a := accessWrite
+			if c.Kind == ChangeWrite && ao.binary(c.Path) {
+				a = accessFile
+			}
+			if s.from, err = v.resolve(string(c.Kind), c.Path, a); err != nil {
 				return nil, err
 			}
 			if c.Kind == ChangeWrite && c.ETag == "" {
@@ -211,8 +224,10 @@ func (v *Vault) planSteps(changes []Change, ao applyOpts) ([]*step, error) {
 					return nil, &PathError{Op: "create", Path: s.from, Reason: reason}
 				}
 			}
-			if err := checkText(string(c.Kind), s.from, c.Data); err != nil {
-				return nil, err
+			if a == accessWrite {
+				if err := checkText(string(c.Kind), s.from, c.Data); err != nil {
+					return nil, err
+				}
 			}
 		case ChangeMove:
 			if s.from, err = v.movePath(c.Path, ao.allowTrash); err != nil {
@@ -230,7 +245,7 @@ func (v *Vault) planSteps(changes []Change, ao applyOpts) ([]*step, error) {
 			if reason := badName(path.Base(s.to)); reason != "" && !strings.HasPrefix(s.to, trashDir+"/") {
 				return nil, &PathError{Op: "move", Path: s.to, Reason: reason}
 			}
-			if c.Data != nil {
+			if c.Data != nil && !ao.binary(s.to) {
 				if !writableExt(s.to) {
 					return nil, &PathError{Op: "move", Path: s.to, Reason: "only .md, .canvas and .base files can be rewritten"}
 				}
