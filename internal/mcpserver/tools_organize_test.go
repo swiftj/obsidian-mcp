@@ -164,3 +164,55 @@ func TestAttachTool(t *testing.T) {
 		}
 	}
 }
+
+func TestReplaceAttachmentTool(t *testing.T) {
+	// X-TOOL-10, V-ATT-02
+	h := start(t, false)
+	h.write("Embeds.md", "![[img.png]]\n")
+	old := h.read("img.png")
+	src := filepath.Join(t.TempDir(), "new.PNG")
+	next := "\x89PNG\r\n\x1a\n\xff new image"
+	if err := os.WriteFile(src, []byte(next), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, info := h.ok("get_note_info", map[string]any{"path": "img.png"})
+	text, out := h.ok("replace_attachment", map[string]any{"path": "img.png", "etag": info["etag"], "file": src, "dry_run": true})
+	if out["dry_run"] != true || !strings.Contains(text, "replace img.png (") || h.read("img.png") != old {
+		t.Errorf("V-ATT-02 dry run = %s", text)
+	}
+	_, out = h.ok("replace_attachment", map[string]any{"path": "img.png", "etag": info["etag"], "file": src})
+	if h.read("img.png") != next || out["size"].(float64) != float64(len(next)) || out["changed"] != true {
+		t.Errorf("V-ATT-02 replace = %v", out)
+	}
+	if _, links := h.ok("outgoing_links", map[string]any{"path": "Embeds.md"}); !strings.Contains(fmt.Sprint(links), "resolved:img.png") {
+		t.Errorf("V-ATT-02 the embed still resolves: %v", links)
+	}
+	other := filepath.Join(t.TempDir(), "new.jpg")
+	if err := os.WriteFile(other, []byte("jpg"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		args map[string]any
+		want string
+	}{
+		{map[string]any{"path": "img.png", "etag": info["etag"], "file": src}, "get_note_info for an image"},
+		{map[string]any{"path": "img.png", "etag": "x", "file": other}, "use attach_file"},
+		{map[string]any{"path": "img.png", "etag": "x", "file": "new.png"}, "absolute path"},
+		{map[string]any{"path": "Welcome.md", "etag": "x", "file": "/tmp/x.md"}, "only images, audio, video and PDF can be attached"},
+	} {
+		if text := h.fail("replace_attachment", tc.args); !strings.Contains(text, tc.want) {
+			t.Errorf("replace_attachment %v = %s; want %q", tc.args, text, tc.want)
+		}
+	}
+	h.ok("undo_last_write", nil)
+	if h.read("img.png") != old {
+		t.Error("V-ATT-02 undo didn't restore the image")
+	}
+	// V-TRASH-04 through the tools.
+	_, info = h.ok("get_note_info", map[string]any{"path": "img.png"})
+	_, del := h.ok("delete_note", map[string]any{"path": "img.png", "etag": info["etag"]})
+	h.ok("restore_from_trash", map[string]any{"trash_path": del["trash_path"]})
+	if h.read("img.png") != old {
+		t.Error("V-TRASH-04 delete and restore an image")
+	}
+}

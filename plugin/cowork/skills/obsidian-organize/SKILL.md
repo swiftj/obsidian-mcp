@@ -77,6 +77,8 @@ Always do a `dry_run` first for anything touching more than one file. Show the u
 - **Embed it:** the tool returns `embed` text such as `![[photo.png]]`; add it to the note with `edit_note`.
 - **Name clashes:** if the name is taken, ` 1`, ` 2` and so on are added.
 - **Refused:** files in hidden folders, symlinks, other file types and files over 100 MB.
+- **Replace a file in place:** `replace_attachment` swaps in a new version of an existing image, audio, video or PDF file, such as a re-recorded clip. Pass `path` (the file in the vault), `etag` (from `get_note_info`) and `file` (the new local file, same extension). The path doesn't change, so every embed keeps working, and `undo_last_write` brings the old version back. To change format, such as `.wav` to `.mp3`, attach the new file instead and update the embeds.
+- **Delete or restore:** `delete_note` and `restore_from_trash` work for attachments too.
 
 ## Undo
 

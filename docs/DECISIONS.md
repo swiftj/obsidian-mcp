@@ -456,3 +456,21 @@ The dependency is added in Phase 2, not before.
 **Cowork check by the owner (2026-10-31)**
 - **Answer:** Cowork tasks do get tools from enabled Desktop extensions. The open question from CLAUDE.md §Packaging is answered, and the plugin needs no `.mcp.json`.
 - **Gotcha found on the way:** the first test failed because Desktop installed the extension disabled. Its log said "has missing required configuration, not enabling automatically": the vault folders were chosen after the install, and the extension stayed off until it was switched on in Settings › Extensions. The README's install steps now say so.
+
+## D-015 Replacing attachments, and trash for every file kind (2026-10-31)
+
+**Bug fixed (V-TRASH-04)**
+- **What was wrong:** `Trash` and `Restore` checked paths as content writes, which allow only `.md`, `.canvas` and `.base`. `delete_note` and `restore_from_trash` therefore refused images, audio, video and PDFs, contrary to `delete_note`'s description.
+- **Fix:** they now use a new access level, `accessFile`. It applies the hidden-folder, config-folder and deny checks but no extension check, the same rule moves already follow (D-012).
+- **Undo:** undoing the trash of an attachment needed the next change too.
+
+**`replace_attachment` (V-ATT-02) [policy]**
+- **What it does:** replaces an existing attachment's bytes in place. The etag comes from `get_note_info`, which returns one for any file.
+- **Same type only:** the new local file must have the same extension (ignoring case). A new format means a new file name, so that case is `attach_file` plus editing the embeds.
+- **Local file rules:** the same as `attach_file`: an absolute path, no hidden folders, an attachment kind, not a symlink, ≤100 MB.
+- **Write path:** shared with `replace` (`replaceResolved`): etag check under the write lock, a journal entry with the old bytes, and an atomic replace that keeps the file mode.
+- **Diff:** no text diff; the dry run shows a size summary line instead.
+- **Journal size:** old versions count against the 500 MB journal cap, so a few large replacements push older undo entries out sooner.
+- **Undo:** writing journaled binary bytes back is allowed only inside `Undo`, through `applyOpts.allowAttachments`, and only for attachment kinds. No tool can write binary through `Apply`.
+- **Error hint:** the stale-etag hint now names `get_note_info` for attachments, because `read_note` reads only text.
+- **Version:** the extension and plugin are now 0.2.0.

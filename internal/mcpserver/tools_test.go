@@ -32,7 +32,7 @@ var (
 		"move_note", "rename_note", "move_folder", "create_folder", // X-TOOL-08
 		"rename_heading", "rename_block", "rename_tag", "rename_property",
 		"open_daily_note", "append_to_daily_note", "create_from_template", // X-TOOL-09
-		"attach_file", "undo_last_write", // X-TOOL-10
+		"attach_file", "replace_attachment", "undo_last_write", // X-TOOL-10
 		"edit_canvas", "create_canvas", "create_base", "edit_base", // X-TOOL-11
 	}
 )

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"path"
 	"unicode/utf8"
@@ -131,6 +132,13 @@ func (v *Vault) replace(ctx context.Context, p, etag string, o WriteOptions, cha
 	if err != nil {
 		return nil, err
 	}
+	return v.replaceResolved(rel, etag, o, change, true)
+}
+
+// replaceResolved is replace for a path already checked by the caller.
+// text files are checked as text and diffed; other files (attachments) get
+// a one-line size summary instead of a diff.
+func (v *Vault) replaceResolved(rel, etag string, o WriteOptions, change func(cur []byte) ([]byte, error), text bool) (*Result, error) {
 	if etag == "" {
 		return nil, ErrETagRequired
 	}
@@ -148,14 +156,20 @@ func (v *Vault) replace(ctx context.Context, p, etag string, o WriteOptions, cha
 	if err != nil {
 		return nil, err
 	}
-	if err := checkText("replace", rel, data); err != nil {
-		return nil, err
+	if text {
+		if err := checkText("replace", rel, data); err != nil {
+			return nil, err
+		}
 	}
 	res := &Result{Path: rel, ETag: ETag(data), DryRun: o.DryRun, Changed: !bytes.Equal(cur, data)}
 	if !res.Changed {
 		return res, nil
 	}
-	res.Diff = udiff.Unified(rel, cur, data)
+	if text {
+		res.Diff = udiff.Unified(rel, cur, data)
+	} else {
+		res.Diff = fmt.Sprintf("replace %s (%s → %s)\n", rel, humanSize(len(cur)), humanSize(len(data)))
+	}
 	if o.DryRun {
 		return res, nil
 	}
@@ -195,5 +209,17 @@ func (v *Vault) journalRecord(e JournalEntry, before []byte) (string, error) {
 func (v *Vault) journalDrop(dir string) {
 	if v.journal != nil && dir != "" {
 		v.journal.drop(dir)
+	}
+}
+
+// humanSize writes a byte count for people: 512 B, 3.4 KB, 2.1 MB.
+func humanSize(n int) string {
+	switch {
+	case n < 1<<10:
+		return fmt.Sprintf("%d B", n)
+	case n < 1<<20:
+		return fmt.Sprintf("%.1f KB", float64(n)/(1<<10))
+	default:
+		return fmt.Sprintf("%.1f MB", float64(n)/(1<<20))
 	}
 }

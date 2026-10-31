@@ -105,6 +105,7 @@ Each requirement is a single line:
 - **V-TPL-01** `p5` Template variables: `{{title}}`, `{{date}}` (default `YYYY-MM-DD`), `{{time}}` (default `HH:mm`), plus `{{date:FMT}}` and `{{time:FMT}}` with moment tokens. The defaults can be overridden in `templates.json`. Any other `{{…}}` and all `<% %>` text is copied verbatim. ⟨templates.md §Template variables⟩ [assumed D-006]
 - **V-TPL-02** `p5` Any other `{{…}}` text and all Templater `<% … %>` code are copied verbatim and never executed. ⟨CLAUDE.md §5⟩
 - **V-ATT-01** `p5` `attach_file` copies a local file into the folder chosen by `attachmentFolderPath`: `/` or missing = vault root, `./` = same folder as the note, `./<name>` = subfolder `<name>` of the note's folder, anything else = that vault folder. It returns embed text in the vault's link style. ⟨settings.md §Default location for new attachments⟩ [assumed D-006]
+- **V-ATT-02** `p7` `replace_attachment` replaces the bytes of an existing image, audio, video or PDF file in place. It needs the file's etag, keeps the path and extension, and is journaled, so `undo_last_write` restores the old bytes. ⟨owner request 2026-10-31⟩ (D-015)
 
 ## O: OFM scanner
 
@@ -218,7 +219,7 @@ Each requirement is a single line:
 - **X-TOOL-07** `p4` Trash tools: `delete_note`, `restore_from_trash`, `list_trash`. ⟨CLAUDE.md §Tools⟩
 - **X-TOOL-08** `p5` Organise tools: `move_note`, `rename_note`, `create_folder`, `move_folder`, `rename_tag`, `rename_property`, `rename_heading`, `rename_block`. ⟨CLAUDE.md §Tools; D-012⟩
 - **X-TOOL-09** `p5` Daily-note and template tools: `open_daily_note`, `append_to_daily_note`, `list_templates`, `create_from_template`. ⟨CLAUDE.md §Tools⟩
-- **X-TOOL-10** `p5` `attach_file` and `undo_last_write`. ⟨CLAUDE.md §Tools⟩
+- **X-TOOL-10** `p5` `attach_file`, `replace_attachment` (D-015) and `undo_last_write`. ⟨CLAUDE.md §Tools⟩
 - **X-TOOL-11** `p6` Canvas and Bases tools: `read_canvas`, `edit_canvas`, `create_canvas`, `read_base`, `create_base`, `edit_base` (D-013). ⟨CLAUDE.md §Tools⟩
 
 ## X-PLUG: Packaging

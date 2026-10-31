@@ -78,7 +78,7 @@ Flags win over environment variables.
 | Trash | `delete_note`, `restore_from_trash`, `list_trash` |
 | Organise | `move_note`, `rename_note`, `move_folder`, `create_folder`, `rename_heading`, `rename_block`, `rename_tag`, `rename_property` |
 | Daily notes and templates | `open_daily_note`, `append_to_daily_note`, `list_templates`, `create_from_template` |
-| Attachments | `attach_file` |
+| Attachments | `attach_file`, `replace_attachment` |
 | Canvas | `read_canvas`, `edit_canvas`, `create_canvas` |
 | Bases | `read_base`, `create_base`, `edit_base` |
 | Undo | `undo_last_write` |

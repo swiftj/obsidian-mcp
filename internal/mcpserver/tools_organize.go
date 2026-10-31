@@ -32,6 +32,7 @@ func (s *Server) addOrganizeTools() {
 	addTool(s, "append_to_daily_note", "Append text to the daily note for a date (default today), creating the note first if needed.", additive, appendToDailyNote)
 	addTool(s, "create_from_template", "Create a note from a template in the template folder. {{title}}, {{date}} and {{time}} are filled in; other text, including Templater code, is copied as is.", additive, createFromTemplate)
 	addTool(s, "attach_file", "Copy a local image, audio, video or PDF file into the vault's attachment folder (per the vault's settings, relative to note) and return the embed text to put in a note.", additive, attachFile)
+	addTool(s, "replace_attachment", "Replace an existing image, audio, video or PDF file in the vault with a local file of the same type, keeping its path so every embed keeps working. Needs the file's etag from get_note_info. The old version can be restored with undo_last_write.", destructive, replaceAttachment)
 	addTool(s, "undo_last_write", "Undo the newest change made through this server: one write, or a whole move or rename. Refused if the files changed since. Use dry_run to see what it would do.", destructive, undoLastWrite)
 }
 
@@ -445,6 +446,38 @@ func attachFile(ctx context.Context, vs *vaultState, in attachIn) (string, attac
 	}
 	o.untrusted("attachment", "path: "+r.Path+"\nembed: "+embed)
 	return o.String(), attachOut{Path: r.Path, Embed: embed, DryRun: r.DryRun}, nil
+}
+
+type replaceAttachmentIn struct {
+	VaultArg
+	Path string `json:"path" jsonschema:"the attachment in the vault to replace, such as Media/clip.mp4"`
+	ETag string `json:"etag" jsonschema:"the file's etag from get_note_info"`
+	File string `json:"file" jsonschema:"absolute path of the local file with the new content; it must have the same extension"`
+	DryRunArg
+}
+
+type replaceAttachmentOut struct {
+	writeOut
+	Size int `json:"size" jsonschema:"the new file's size in bytes"`
+}
+
+func replaceAttachment(ctx context.Context, vs *vaultState, in replaceAttachmentIn) (string, replaceAttachmentOut, error) {
+	if !strings.EqualFold(path.Ext(in.Path), filepath.Ext(in.File)) {
+		return "", replaceAttachmentOut{}, fmt.Errorf("the new file's extension %q differs from %s; a new format means a new file name, so use attach_file for it and update the embeds that should show it", filepath.Ext(in.File), in.Path)
+	}
+	data, err := readLocalAttachment(in.File)
+	if err != nil {
+		return "", replaceAttachmentOut{}, err
+	}
+	r, err := vs.v.ReplaceAttachment(ctx, in.Path, data, in.ETag, vault.WriteOptions{DryRun: in.DryRun})
+	if err != nil {
+		return "", replaceAttachmentOut{}, err
+	}
+	text, w, err := writeResult("replaced", r)
+	if err != nil {
+		return "", replaceAttachmentOut{}, err
+	}
+	return text, replaceAttachmentOut{writeOut: w, Size: len(data)}, nil
 }
 
 // attachmentFolder is where a new attachment for note goes (V-ATT-01): "/"

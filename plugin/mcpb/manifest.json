@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "obs-mcp",
   "display_name": "Obsidian vaults",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Read, search, edit and reorganise Obsidian vaults directly on disk, safely: etag-checked minimal edits, link-aware renames, dry runs and undo.",
   "long_description": "obs-mcp works on your vault folders directly; Obsidian doesn't need to be running. Every change to an existing file needs the etag of Claude's latest read, so edits made in Obsidian are never overwritten. Edits patch only the changed bytes, renames and moves rewrite the links that would break, every write has a dry run, deletes go to the vault's .trash, and undo_last_write reverses the last change. It never runs code, plugins, Templater or URIs, and has no network access.",
   "author": {
@@ -165,6 +165,10 @@
     {
       "name": "attach_file",
       "description": "Copy a local image, audio, video or PDF file into the vault's attachment folder and return the embed text."
+    },
+    {
+      "name": "replace_attachment",
+      "description": "Replace an image, audio, video or PDF file in place, keeping every embed working."
     },
     {
       "name": "read_canvas",

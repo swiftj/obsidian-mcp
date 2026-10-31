@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"maps"
@@ -281,5 +282,69 @@ func TestPlanVaultRenames(t *testing.T) {
 	}
 	if !skipped["T3.md"] || !skipped["T4.md"] {
 		t.Errorf("P-REN-01 skipped = %+v", p.Skipped)
+	}
+}
+
+func TestReplaceAttachment(t *testing.T) {
+	// V-ATT-02
+	ctx := context.Background()
+	v, dir := openJournaled(t)
+	p := filepath.Join(dir, "img.png")
+	old, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := mustRead(t, v, "img.png")
+	next := []byte("\x89PNG\r\n\x1a\n\xff\xfe new binary image")
+	if _, err := v.ReplaceAttachment(ctx, "img.png", next, "stale", WriteOptions{}); !errors.As(err, new(*ConflictError)) {
+		t.Errorf("V-ATT-02 stale etag = %v", err)
+	}
+	res, err := v.ReplaceAttachment(ctx, "img.png", next, f.ETag, WriteOptions{DryRun: true})
+	if err != nil || !res.DryRun || !res.Changed || !strings.HasPrefix(res.Diff, "replace img.png (") {
+		t.Errorf("V-ATT-02 dry run = %+v, %v", res, err)
+	}
+	if b, _ := os.ReadFile(p); !bytes.Equal(b, old) {
+		t.Error("V-ATT-02 dry run changed the file")
+	}
+	if res, err := v.ReplaceAttachment(ctx, "img.png", old, f.ETag, WriteOptions{}); err != nil || res.Changed {
+		t.Errorf("V-ATT-02 identical bytes = %+v, %v", res, err)
+	}
+	res, err = v.ReplaceAttachment(ctx, "img.png", next, f.ETag, WriteOptions{})
+	if err != nil || res.ETag != ETag(next) {
+		t.Fatalf("V-ATT-02 replace = %+v, %v", res, err)
+	}
+	if b, _ := os.ReadFile(p); !bytes.Equal(b, next) {
+		t.Error("V-ATT-02 bytes not replaced")
+	}
+	u, err := v.Undo(ctx, WriteOptions{})
+	if err != nil {
+		t.Fatalf("V-ATT-02 undo: %v", err)
+	}
+	if d := u.Diff(); !strings.Contains(d, "replace img.png (") || strings.Contains(d, "PNG") {
+		t.Errorf("V-ATT-02 undo diff shows bytes: %q", d)
+	}
+	if b, _ := os.ReadFile(p); !bytes.Equal(b, old) {
+		t.Error("V-ATT-02 undo didn't restore the old bytes")
+	}
+	// Undo is refused after an outside change.
+	f = mustRead(t, v, "img.png")
+	if _, err := v.ReplaceAttachment(ctx, "img.png", next, f.ETag, WriteOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("edited elsewhere"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := v.Undo(ctx, WriteOptions{}); !errors.As(err, new(*ConflictError)) {
+		t.Errorf("V-ATT-02 undo after an outside change = %v", err)
+	}
+	w := mustRead(t, v, "Welcome.md")
+	if _, err := v.ReplaceAttachment(ctx, "Welcome.md", next, w.ETag, WriteOptions{}); !errors.As(err, new(*PathError)) {
+		t.Errorf("V-ATT-02 replace a note = %v", err)
+	}
+	if _, err := v.ReplaceAttachment(ctx, ".obsidian/x.png", next, "x", WriteOptions{}); !errors.As(err, new(*PathError)) {
+		t.Errorf("V-ATT-02 replace in the config folder = %v", err)
+	}
+	if _, err := v.ReplaceAttachment(ctx, "nope.png", next, "x", WriteOptions{}); !errors.As(err, new(*NotFoundError)) {
+		t.Errorf("V-ATT-02 replace a missing file = %v", err)
 	}
 }

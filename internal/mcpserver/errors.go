@@ -31,7 +31,7 @@ func toolError(err error) error {
 		if conflict.Expected == "" {
 			hint = "the file already exists; read it, then edit or replace it with its etag, or pick another path"
 		} else {
-			hint = "the file changed since you read it; call read_note again and retry with the new etag"
+			hint = "the file changed since you read it; call read_note again (get_note_info for an image, audio, video or PDF file) and retry with the new etag"
 		}
 	case errors.Is(err, vault.ErrETagRequired):
 		hint = "read the note first and pass its etag"

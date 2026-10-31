@@ -78,6 +78,15 @@ type applyOpts struct {
 	allowAttachments bool
 }
 
+// diffOf is a unified diff for text files, and a size line for
+// attachments, whose bytes mean nothing as text.
+func diffOf(p string, before, after []byte) string {
+	if attachmentKinds[KindOf(p)] {
+		return fmt.Sprintf("replace %s (%s → %s)\n", p, humanSize(len(before)), humanSize(len(after)))
+	}
+	return udiff.Unified(p, before, after)
+}
+
 // binary reports whether a change may write non-text bytes to p: only undo,
 // and only for attachment kinds.
 func (ao applyOpts) binary(p string) bool {
@@ -117,10 +126,10 @@ func (v *Vault) apply(ctx context.Context, changes []Change, o WriteOptions, ao 
 			r.Path = s.to
 			r.Diff = fmt.Sprintf("rename %s → %s\n", s.from, s.to)
 			if !bytes.Equal(s.before, s.after) {
-				r.Diff += udiff.Unified(s.to, s.before, s.after)
+				r.Diff += diffOf(s.to, s.before, s.after)
 			}
 		default:
-			r.Diff = udiff.Unified(s.from, s.before, s.after)
+			r.Diff = diffOf(s.from, s.before, s.after)
 			r.Changed = s.c.Kind == ChangeCreate || !bytes.Equal(s.before, s.after)
 		}
 		res.Results = append(res.Results, r)
@@ -454,6 +463,24 @@ func (v *Vault) CreateFolder(ctx context.Context, p string, o WriteOptions) (*Re
 		return res, nil
 	}
 	return res, v.mkdirs("create_folder", rel+"/x", true)
+}
+
+// ReplaceAttachment replaces the bytes of the existing image, audio, video
+// or PDF file at p, keeping its path, so embeds keep working (V-ATT-02).
+// etag must be the file's current etag. The previous bytes are journaled,
+// so undo can restore them.
+func (v *Vault) ReplaceAttachment(ctx context.Context, p string, data []byte, etag string, o WriteOptions) (*Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	rel, err := v.resolve("replace", p, accessFile)
+	if err != nil {
+		return nil, err
+	}
+	if !attachmentKinds[KindOf(rel)] {
+		return nil, &PathError{Op: "replace", Path: rel, Reason: "only images, audio, video and PDF can be replaced this way"}
+	}
+	return v.replaceResolved(rel, etag, o, func([]byte) ([]byte, error) { return data, nil }, false)
 }
 
 // AttachmentKinds are the kinds CreateAttachment writes.
