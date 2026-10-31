@@ -35,6 +35,8 @@ Binaries are built for macOS on Apple silicon and for Linux (amd64 and arm64). T
    | **Hidden paths** | comma-separated globs no tool can see, such as `Journal/**,Private/**` |
    | **Keep undo history** | on by default; keeps previous versions of changed files, up to 500 MB, in `~/.local/state/obs-mcp/journal` |
 
+4. **Turn the extension on** in Settings › Extensions. Desktop doesn't enable an extension that was installed before its required settings were filled in, so after choosing the vault folders, check that the switch is on.
+
 ### Claude Cowork
 
 1. Install the Desktop extension above; it supplies the server.
