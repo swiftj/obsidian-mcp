@@ -107,3 +107,7 @@ The design notes are in `docs/`:
 - `SPEC_CONTRACT.md`: the numbered requirements, each named by a test
 - `DECISIONS.md`: why things are the way they are
 - `obsidian/` and `jsoncanvas/`: the source documentation everything is built against
+
+## Licence
+
+MIT; see [LICENSE](LICENSE). The pages under `docs/obsidian/` and `docs/jsoncanvas/` are copies of the Obsidian Help and JSON Canvas documentation, kept for reference, and remain under their owners' terms.

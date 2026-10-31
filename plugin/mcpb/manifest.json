@@ -12,6 +12,7 @@
     "type": "git",
     "url": "https://github.com/swiftj/obsidian-mcp"
   },
+  "license": "MIT",
   "server": {
     "type": "binary",
     "entry_point": "server/obs-mcp",
