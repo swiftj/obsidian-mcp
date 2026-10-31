@@ -452,3 +452,7 @@ The dependency is added in Phase 2, not before.
 - **Skills:** written from scratch from `docs/obsidian/*`, `docs/jsoncanvas/spec-1.0.md` and the tools' behaviour. No text from kepano/obsidian-skills or any other source is used, so no third-party licence applies.
 - **Drift test:** every snake_case word that a skill writes as inline code, outside code blocks, must appear somewhere in the server's tool list JSON: a tool name, an argument or output field, or a value a description names, such as an edit op. A renamed or removed tool therefore fails the build.
 - **View types:** the Bases skill names only the view types in the fetched docs (`table`, `kanban`).
+
+**Cowork check by the owner (2026-10-31)**
+- **Answer:** Cowork tasks do get tools from enabled Desktop extensions. The open question from CLAUDE.md §Packaging is answered, and the plugin needs no `.mcp.json`.
+- **Gotcha found on the way:** the first test failed because Desktop installed the extension disabled. Its log said "has missing required configuration, not enabling automatically": the vault folders were chosen after the install, and the extension stayed off until it was switched on in Settings › Extensions. The README's install steps now say so.

@@ -42,7 +42,7 @@ Binaries are built for macOS on Apple silicon and for Linux (amd64 and arm64). T
 1. Install the Desktop extension above; it supplies the server.
 2. Build `dist/obsidian-vaults-plugin.zip` with `make plugin`, then upload it in Customize › Plugins › Upload. It holds only the skills.
 
-> **Not yet confirmed:** whether Cowork tasks can use servers from Desktop extensions. If the tools don't show up in a Cowork task, the fallback is a `.mcp.json` inside the plugin that starts `obs-mcp` with your vault path, read from a settings file outside the plugin. Please report what you see.
+> Cowork tasks use the server from the Desktop extension (checked 2026-10-31), so the extension must be installed and switched on.
 
 ### Claude Code
 
