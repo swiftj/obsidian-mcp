@@ -1,0 +1,232 @@
+{
+  "manifest_version": "0.3",
+  "name": "obs-mcp",
+  "display_name": "Obsidian vaults",
+  "version": "0.1.0",
+  "description": "Read, search, edit and reorganise Obsidian vaults directly on disk, safely: etag-checked minimal edits, link-aware renames, dry runs and undo.",
+  "long_description": "obs-mcp works on your vault folders directly; Obsidian doesn't need to be running. Every change to an existing file needs the etag of Claude's latest read, so edits made in Obsidian are never overwritten. Edits patch only the changed bytes, renames and moves rewrite the links that would break, every write has a dry run, deletes go to the vault's .trash, and undo_last_write reverses the last change. It never runs code, plugins, Templater or URIs, and has no network access.",
+  "author": {
+    "name": "John Swift"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swiftj/obsidian-mcp"
+  },
+  "server": {
+    "type": "binary",
+    "entry_point": "server/obs-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/server/obs-mcp",
+      "args": [
+        "--",
+        "${user_config.vaults}"
+      ],
+      "env": {
+        "OBS_MCP_READ_ONLY": "${user_config.read_only}",
+        "OBS_MCP_DENY": "${user_config.deny}",
+        "OBS_MCP_JOURNAL": "${user_config.journal}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "list_vaults",
+      "description": "List the configured vaults; the first is the default."
+    },
+    {
+      "name": "list_notes",
+      "description": "List files in a folder of the vault, optionally recursively and filtered by a glob such as Projects/**/*.md."
+    },
+    {
+      "name": "get_note_info",
+      "description": "Show a file's etag, properties, tags, outline, block IDs and link counts."
+    },
+    {
+      "name": "read_note",
+      "description": "Read a note, one heading's section, one block or a line range, with its etag."
+    },
+    {
+      "name": "read_notes",
+      "description": "Read up to 20 whole text files at once, each with its etag."
+    },
+    {
+      "name": "search",
+      "description": "Full-text search of the notes with tag, property, path and date filters."
+    },
+    {
+      "name": "list_tags",
+      "description": "List the vault's tags with note counts, including parent tags of nested tags."
+    },
+    {
+      "name": "find_by_property",
+      "description": "Find notes by a property's value, or by having the property."
+    },
+    {
+      "name": "backlinks",
+      "description": "List the links from other files that point at a file, with source and line."
+    },
+    {
+      "name": "outgoing_links",
+      "description": "List a file's links and embeds, each with the file it resolves to, or its candidates when ambiguous."
+    },
+    {
+      "name": "unresolved_links",
+      "description": "List links that point at no file, with source and line."
+    },
+    {
+      "name": "orphans",
+      "description": "List files that no other file links to."
+    },
+    {
+      "name": "resolve_link",
+      "description": "Resolve a link the way Obsidian does, from the note it is written in."
+    },
+    {
+      "name": "create_note",
+      "description": "Create a new note (.md); fails if it exists."
+    },
+    {
+      "name": "edit_note",
+      "description": "Edit a note in place with small patches; everything outside the edited ranges stays byte for byte."
+    },
+    {
+      "name": "replace_note",
+      "description": "Replace a note's whole text; prefer edit_note."
+    },
+    {
+      "name": "set_properties",
+      "description": "Set frontmatter properties of a note, checked against the vault's property types."
+    },
+    {
+      "name": "remove_properties",
+      "description": "Remove frontmatter properties from a note."
+    },
+    {
+      "name": "delete_note",
+      "description": "Move a note or other file to the vault's .trash folder."
+    },
+    {
+      "name": "restore_from_trash",
+      "description": "Move a file from .trash back to where it was, or to another path."
+    },
+    {
+      "name": "list_trash",
+      "description": "List the files in the vault's .trash folder, with the path restore_from_trash takes."
+    },
+    {
+      "name": "move_note",
+      "description": "Move a note or file, rewriting every link that would break."
+    },
+    {
+      "name": "rename_note",
+      "description": "Rename a note or other file in its folder, rewriting every link to it like move_note."
+    },
+    {
+      "name": "move_folder",
+      "description": "Move a folder and everything in it, rewriting links like move_note."
+    },
+    {
+      "name": "create_folder",
+      "description": "Create a folder and any missing parents."
+    },
+    {
+      "name": "rename_heading",
+      "description": "Rename a heading in a note and update every [[Note#Heading]] link to it, including #Parent#Child chains."
+    },
+    {
+      "name": "rename_block",
+      "description": "Rename a block ID (^id) in a note and update every [[Note#^id]] link to it."
+    },
+    {
+      "name": "rename_tag",
+      "description": "Rename a tag in every note, inline and in frontmatter, ignoring case."
+    },
+    {
+      "name": "rename_property",
+      "description": "Rename a frontmatter property in every note that has it."
+    },
+    {
+      "name": "open_daily_note",
+      "description": "Open the daily note for a date (default today), creating it from the daily-note template if it doesn't exist."
+    },
+    {
+      "name": "append_to_daily_note",
+      "description": "Append text to the daily note for a date (default today), creating the note first if needed."
+    },
+    {
+      "name": "list_templates",
+      "description": "List the notes in the vault's template folder (Templates plugin setting)."
+    },
+    {
+      "name": "create_from_template",
+      "description": "Create a note from a template in the template folder."
+    },
+    {
+      "name": "attach_file",
+      "description": "Copy a local image, audio, video or PDF file into the vault's attachment folder and return the embed text."
+    },
+    {
+      "name": "read_canvas",
+      "description": "Read a canvas's nodes, edges and spec problems, with its etag."
+    },
+    {
+      "name": "edit_canvas",
+      "description": "Add, update and remove canvas nodes and edges, checked against JSON Canvas 1.0."
+    },
+    {
+      "name": "create_canvas",
+      "description": "Create a new canvas (.canvas), empty or with add_node and add_edge ops."
+    },
+    {
+      "name": "read_base",
+      "description": "Read a base's views, filters, formulas and problems, with its etag."
+    },
+    {
+      "name": "create_base",
+      "description": "Create a new base (.base) from YAML text, checked against the Bases syntax."
+    },
+    {
+      "name": "edit_base",
+      "description": "Set, remove or insert values in a base's YAML, checked against the Bases syntax."
+    },
+    {
+      "name": "undo_last_write",
+      "description": "Undo the newest change made through this server, including a whole move or rename."
+    }
+  ],
+  "user_config": {
+    "vaults": {
+      "type": "directory",
+      "title": "Vault folders",
+      "description": "One or more Obsidian vault folders. The first is the default for every tool.",
+      "multiple": true,
+      "required": true
+    },
+    "read_only": {
+      "type": "boolean",
+      "title": "Read-only",
+      "description": "Only offer the reading tools; Claude can't change any file.",
+      "required": false,
+      "default": false
+    },
+    "deny": {
+      "type": "string",
+      "title": "Hidden paths",
+      "description": "Comma-separated globs that no tool can see, read or write, such as Journal/**,Private/**. Leave empty to hide nothing.",
+      "required": false,
+      "default": ""
+    },
+    "journal": {
+      "type": "boolean",
+      "title": "Keep undo history",
+      "description": "Keep the previous version of every changed file (up to 500 MB, in ~/.local/state/obs-mcp/journal) so undo_last_write can reverse changes.",
+      "required": false,
+      "default": true
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin"
+    ]
+  }
+}
