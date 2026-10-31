@@ -1,0 +1,8 @@
+{
+  "name": "obsidian-vaults",
+  "version": "0.1.0",
+  "description": "Skills for working safely in Obsidian vaults through the obs-mcp server: careful note edits, link-aware reorganising, and Canvas and Bases editing.",
+  "author": {
+    "name": "John Swift"
+  }
+}
