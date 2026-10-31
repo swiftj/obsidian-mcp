@@ -436,3 +436,19 @@ The dependency is added in Phase 2, not before.
 - **New keys:** values arrive as JSON objects, whose key order is lost in transit. New mappings use the docs' key order (`type`, `name`, `limit`, `groupBy`, …), then the rest sorted.
 - **Self-check:** every result is parsed again and must equal the edited tree exactly, or nothing is written.
 - **The `props` package is unchanged.**
+
+## D-014 Phase 7 choices: packaging (2026-10-31)
+
+**Desktop extension** (X-PLUG-01..04, X-PLUG-09)
+- **Manifest:** `plugin/mcpb/manifest.json` passed `mcpb validate` (CLI 2.1.2) unchanged, so the validator forced no field changes.
+- **Command line:** `args` are `["--", "${user_config.vaults}"]`. The vaults are args so the array expands; `--` ends flag parsing, so a vault folder whose name starts with `-` isn't read as a flag.
+- **Settings:** the three settings go through the server's env variables. `journal` is a boolean, and the server already reads `true` and `false` as on and off.
+- **`tools`:** the manifest lists every tool with a one-line description; a test keeps it equal to the server's list.
+- **No icon** and no signing: `mcpb info` reports "Not signed".
+- **Version:** the manifest's `version` is the one version. The Makefile reads it for the binary's `-X main.version`, and a test checks that the plugin's version equals it.
+
+**Plugin** (X-PLUG-05..08)
+- **Layout:** the Cowork / Claude Code plugin lives in `plugin/cowork/` (`.claude-plugin/plugin.json` and `skills/`), so the plugin zip never includes the Desktop manifest. There is no `bin/` and no `.mcp.json`; the server comes from the Desktop extension.
+- **Skills:** written from scratch from `docs/obsidian/*`, `docs/jsoncanvas/spec-1.0.md` and the tools' behaviour. No text from kepano/obsidian-skills or any other source is used, so no third-party licence applies.
+- **Drift test:** every snake_case word that a skill writes as inline code, outside code blocks, must appear somewhere in the server's tool list JSON: a tool name, an argument or output field, or a value a description names, such as an edit op. A renamed or removed tool therefore fails the build.
+- **View types:** the Bases skill names only the view types in the fetched docs (`table`, `kanban`).
